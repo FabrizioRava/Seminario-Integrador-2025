@@ -1,0 +1,95 @@
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import api from 'services/api';
+import type { AuthResponse, User, UserRole } from 'types';
+
+interface AuthContextState {
+  user: User | null;
+  token: string | null;
+  loading: boolean;
+  login: (legajo: string, password: string) => Promise<User>;
+  logout: () => void;
+}
+
+const AuthContext = createContext<AuthContextState | undefined>(undefined);
+
+const STORAGE_KEY = 'autogestion.auth';
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored) as { user: User; token: string };
+        setUser(parsed.user);
+        setToken(parsed.token);
+      } catch (error) {
+        console.warn('Failed to parse auth storage', error);
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    }
+    setLoading(false);
+  }, []);
+
+  const login = async (legajo: string, password: string): Promise<User> => {
+    const response = await api.post<AuthResponse>('/auth/login', { legajo, password });
+    const { access_token, user: nextUser } = response.data;
+
+    setUser(nextUser);
+    setToken(access_token);
+
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ token: access_token, user: nextUser })
+      );
+      // Mantener compatibilidad con otros servicios que leen estas claves
+      localStorage.setItem('token', access_token);
+      localStorage.setItem('user', JSON.stringify(nextUser));
+    }
+
+    return nextUser;
+  };
+
+  const logout = () => {
+    setUser(null);
+    setToken(null);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+    }
+  };
+
+  const value = useMemo(
+    () => ({ user, token, loading, login, logout }),
+    [user, token, loading]
+  );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+export function getHomePathByRole(role?: UserRole) {
+  switch (role) {
+    case 'admin':
+    case 'secretaria_academica':
+      return '/admin';
+    case 'profesor':
+      return '/profesor';
+    case 'estudiante':
+    default:
+      return '/dashboard';
+  }
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+}
