@@ -1,4 +1,4 @@
-// File: /Users/santiagoirigo/Documents/Mis Cosas/GitHub/UTN/Seminario/Seminario-Integrador-2025-fusion/frontend/src/app/dashboard/page.tsx
+// File: /Users/santiagoirigo/Documents/Mis Cosas/GitHub/Seminario-Integrador-2025/santi Fusion/Seminario-Integrador-2025-fusion/frontend/src/app/dashboard/page.tsx
 import * as entry from '../../../../src/app/dashboard/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

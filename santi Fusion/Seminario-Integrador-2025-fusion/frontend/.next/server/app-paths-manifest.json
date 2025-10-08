@@ -1,12 +1,4 @@
 {
-  "/horarios/page": "app/horarios/page.js",
   "/dashboard/page": "app/dashboard/page.js",
-  "/calificaciones/page": "app/calificaciones/page.js",
-  "/page": "app/page.js",
-  "/materias/page": "app/materias/page.js",
-  "/inscripciones/page": "app/inscripciones/page.js",
-  "/profesor/page": "app/profesor/page.js",
-  "/mi-horario/page": "app/mi-horario/page.js",
-  "/admin/page": "app/admin/page.js",
-  "/admin/asistencia/page": "app/admin/asistencia/page.js"
+  "/page": "app/page.js"
 }
