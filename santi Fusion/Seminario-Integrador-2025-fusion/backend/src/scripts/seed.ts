@@ -53,16 +53,16 @@ async function seed() {
     // Crear carreras
     console.log('🎓 Creando carreras...');
     const carreraIngenieria = await dataSource.query(`
-      INSERT INTO "carrera" (nombre, descripcion, duracion, titulo)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO "carrera" (nombre, descripcion)
+      VALUES ($1, $2)
       RETURNING id
-    `, ['Ingeniería en Sistemas', 'Carrera de grado en Ingeniería en Sistemas de Información', 5, 'Ingeniero/a en Sistemas de Información']);
+    `, ['Ingeniería en Sistemas', 'Carrera de grado en Ingeniería en Sistemas de Información']);
 
     const carreraLicenciatura = await dataSource.query(`
-      INSERT INTO "carrera" (nombre, descripcion, duracion, titulo)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO "carrera" (nombre, descripcion)
+      VALUES ($1, $2)
       RETURNING id
-    `, ['Licenciatura en Ciencias de la Computación', 'Carrera de grado en Ciencias de la Computación', 5, 'Licenciado/a en Ciencias de la Computación']);
+    `, ['Licenciatura en Ciencias de la Computación', 'Carrera de grado en Ciencias de la Computación']);
 
     // Crear departamentos
     console.log('🏢 Creando departamentos...');
@@ -87,10 +87,10 @@ async function seed() {
     // Crear planes de estudio
     console.log('📋 Creando planes de estudio...');
     const planIngenieria2023 = await dataSource.query(`
-      INSERT INTO "plan_estudio" (nombre, descripcion, "añoInicio", "añoFin", "carreraId")
-      VALUES ($1, $2, $3, $4, $5)
+      INSERT INTO "plan_estudio" (nombre, descripcion, "año", "carreraId")
+      VALUES ($1, $2, $3, $4)
       RETURNING id
-    `, ['Plan 2023 - Ingeniería', 'Plan de estudios 2023 para Ingeniería en Sistemas', 2023, 2028, carreraIngenieria[0].id]);
+    `, ['Plan 2023 - Ingeniería', 'Plan de estudios 2023 para Ingeniería en Sistemas', 2023, carreraIngenieria[0].id]);
 
     // Crear materias
     console.log('📚 Creando materias...');
@@ -116,11 +116,19 @@ async function seed() {
     const materiasCreadas: any[] = [];
     for (const materia of materias) {
       const result = await dataSource.query(`
-        INSERT INTO "materia" (nombre, descripcion, "planEstudioId", "departamentoId")
-        VALUES ($1, $2, $3, $4)
+        INSERT INTO "materia" (nombre, descripcion, "departamentoId")
+        VALUES ($1, $2, $3)
         RETURNING id
-      `, [materia.nombre, materia.descripcion, planIngenieria2023[0].id, materia.departamento]);
-      materiasCreadas.push({ ...materia, id: result[0].id });
+      `, [materia.nombre, materia.descripcion, materia.departamento]);
+      const materiaId = result[0].id;
+
+      // Asociar materia al plan de estudio
+      await dataSource.query(`
+        INSERT INTO "materia_planes_estudio" ("materiaId", "planEstudioId")
+        VALUES ($1, $2)
+      `, [materiaId, planIngenieria2023[0].id]);
+
+      materiasCreadas.push({ ...materia, id: materiaId });
     }
 
     // Crear comisiones
@@ -128,20 +136,20 @@ async function seed() {
     for (const materia of materiasCreadas.slice(0, 8)) { // Primeras 8 materias (primer año)
       // Comisión mañana
       const comisionManana = await dataSource.query(`
-        INSERT INTO "comision" (nombre, "cupoMaximo", "cupoDisponible", "materiaId", "docenteId")
-        VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO "comision" (nombre, descripcion, "materiaId", "profesorId")
+        VALUES ($1, $2, $3, $4)
         RETURNING id
-      `, [`${materia.nombre} - Turno Mañana`, 30, 25, materia.id, profesorUser[0].id]);
+      `, [`${materia.nombre} - Turno Mañana`, 'Comisión turno mañana', materia.id, profesorUser[0].id]);
 
       // Comisión tarde
       const comisionTarde = await dataSource.query(`
-        INSERT INTO "comision" (nombre, "cupoMaximo", "cupoDisponible", "materiaId", "docenteId")
-        VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO "comision" (nombre, descripcion, "materiaId", "profesorId")
+        VALUES ($1, $2, $3, $4)
         RETURNING id
-      `, [`${materia.nombre} - Turno Tarde`, 30, 28, materia.id, profesorUser[0].id]);
+      `, [`${materia.nombre} - Turno Tarde`, 'Comisión turno tarde', materia.id, profesorUser[0].id]);
 
       // Crear horarios para cada comisión
-      const dias = ['LUNES', 'MIERCOLES', 'VIERNES'];
+      const dias = ['lunes', 'miercoles', 'viernes'];
       for (const dia of dias) {
         // Horario mañana
         await dataSource.query(`
