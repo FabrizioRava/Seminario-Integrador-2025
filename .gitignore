@@ -1,7 +1,13 @@
+# Archivos de dependencias generados (CRUCIAL)
 node_modules/
-backend/node_modules/
-frontend/node_modules/
+
+# Archivos de configuración de entorno (CRUCIAL por seguridad)
 .env
-/backend/.env
-/frontend/.env.local
-node_modules
+# Ignora archivos de entorno locales específicos
+*.local
+*.env.*
+
+# Archivos y carpetas específicos que no quieres versionar
+dist/
+build/
+coverage/
