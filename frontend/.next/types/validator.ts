@@ -36,18 +36,6 @@ type LayoutConfig<Route extends LayoutRoutes = LayoutRoutes> = {
 }
 
 
-// Validate ../../src/app/(estudiante)/dashboard/page.tsx
-{
-  const handler = {} as typeof import("../../src/app/(estudiante)/dashboard/page.js")
-  handler satisfies AppPageConfig<"/dashboard">
-}
-
-// Validate ../../src/app/(estudiante)/examenes/page.tsx
-{
-  const handler = {} as typeof import("../../src/app/(estudiante)/examenes/page.js")
-  handler satisfies AppPageConfig<"/examenes">
-}
-
 // Validate ../../src/app/admin/asistencia/page.tsx
 {
   const handler = {} as typeof import("../../src/app/admin/asistencia/page.js")
@@ -66,10 +54,16 @@ type LayoutConfig<Route extends LayoutRoutes = LayoutRoutes> = {
   handler satisfies AppPageConfig<"/calificaciones">
 }
 
-// Validate ../../src/app/estudiante/asistencias/page.tsx
+// Validate ../../src/app/dashboard/page.tsx
 {
-  const handler = {} as typeof import("../../src/app/estudiante/asistencias/page.js")
-  handler satisfies AppPageConfig<"/estudiante/asistencias">
+  const handler = {} as typeof import("../../src/app/dashboard/page.js")
+  handler satisfies AppPageConfig<"/dashboard">
+}
+
+// Validate ../../src/app/examenes/page.tsx
+{
+  const handler = {} as typeof import("../../src/app/examenes/page.js")
+  handler satisfies AppPageConfig<"/examenes">
 }
 
 // Validate ../../src/app/horarios/page.tsx
@@ -126,14 +120,68 @@ type LayoutConfig<Route extends LayoutRoutes = LayoutRoutes> = {
 
 
 
-// Validate ../../src/app/(estudiante)/layout.tsx
+// Validate ../../src/app/admin/asistencia/layout.tsx
 {
-  const handler = {} as typeof import("../../src/app/(estudiante)/layout.js")
-  handler satisfies LayoutConfig<"/">
+  const handler = {} as typeof import("../../src/app/admin/asistencia/layout.js")
+  handler satisfies LayoutConfig<"/admin/asistencia">
+}
+
+// Validate ../../src/app/admin/layout.tsx
+{
+  const handler = {} as typeof import("../../src/app/admin/layout.js")
+  handler satisfies LayoutConfig<"/admin">
+}
+
+// Validate ../../src/app/calificaciones/layout.tsx
+{
+  const handler = {} as typeof import("../../src/app/calificaciones/layout.js")
+  handler satisfies LayoutConfig<"/calificaciones">
+}
+
+// Validate ../../src/app/dashboard/layout.tsx
+{
+  const handler = {} as typeof import("../../src/app/dashboard/layout.js")
+  handler satisfies LayoutConfig<"/dashboard">
+}
+
+// Validate ../../src/app/examenes/layout.tsx
+{
+  const handler = {} as typeof import("../../src/app/examenes/layout.js")
+  handler satisfies LayoutConfig<"/examenes">
+}
+
+// Validate ../../src/app/horarios/layout.tsx
+{
+  const handler = {} as typeof import("../../src/app/horarios/layout.js")
+  handler satisfies LayoutConfig<"/horarios">
+}
+
+// Validate ../../src/app/inscripciones/layout.tsx
+{
+  const handler = {} as typeof import("../../src/app/inscripciones/layout.js")
+  handler satisfies LayoutConfig<"/inscripciones">
 }
 
 // Validate ../../src/app/layout.tsx
 {
   const handler = {} as typeof import("../../src/app/layout.js")
   handler satisfies LayoutConfig<"/">
+}
+
+// Validate ../../src/app/materias/layout.tsx
+{
+  const handler = {} as typeof import("../../src/app/materias/layout.js")
+  handler satisfies LayoutConfig<"/materias">
+}
+
+// Validate ../../src/app/mi-horario/layout.tsx
+{
+  const handler = {} as typeof import("../../src/app/mi-horario/layout.js")
+  handler satisfies LayoutConfig<"/mi-horario">
+}
+
+// Validate ../../src/app/profesor/layout.tsx
+{
+  const handler = {} as typeof import("../../src/app/profesor/layout.js")
+  handler satisfies LayoutConfig<"/profesor">
 }
