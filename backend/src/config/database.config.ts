@@ -6,7 +6,7 @@ export const getDatabaseConfig = (): TypeOrmModuleOptions => ({
   port: parseInt(process.env.DB_PORT || '5433'),
   username: process.env.DB_USERNAME || 'postgres',
   password: process.env.DB_PASSWORD || 'testpass',
-  database: process.env.DB_DATABASE || 'testdb',
+  database: process.env.DB_DATABASE || 'autogestion',
   autoLoadEntities: true,
   synchronize: process.env.NODE_ENV !== 'production',
   logging: process.env.NODE_ENV === 'development',

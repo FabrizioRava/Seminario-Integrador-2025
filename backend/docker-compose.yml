@@ -5,7 +5,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: testpass
-      POSTGRES_DB: testdb
+      POSTGRES_DB: autogestion
     ports:
       - "5433:5432"
     volumes:

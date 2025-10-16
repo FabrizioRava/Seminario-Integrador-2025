@@ -8,7 +8,7 @@ async function testConnection() {
     port: 5433,
     username: 'postgres',
     password: 'testpass',
-    database: 'testdb',
+    database: 'autogestion',
     logging: true,
     synchronize: true,
     dropSchema: true,
