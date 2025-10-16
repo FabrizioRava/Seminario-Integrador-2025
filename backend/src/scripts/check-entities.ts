@@ -25,7 +25,7 @@ async function checkEntities() {
     port: 5433,
     username: 'postgres',
     password: 'testpass',
-    database: 'testdb',
+    database: 'autogestion',
     entities: [
       User,
       Inscripcion,
