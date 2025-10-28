@@ -1,14 +1,19 @@
-import { JwtAuthGuard } from './jwt-auth.guard';
 import { ExecutionContext } from '@nestjs/common';
+import { JwtAuthGuard } from './jwt-auth.guard';
 
 describe('JwtAuthGuard', () => {
   it('should delegate to super.canActivate', () => {
-    const guard = new JwtAuthGuard();
-    const context = { switchToHttp: jest.fn() } as unknown as ExecutionContext;
-    // Spy on parent prototype method
-    const spy = jest.spyOn(Object.getPrototypeOf(guard), 'canActivate').mockReturnValue(true as any);
-    const res = guard.canActivate(context);
+    // Patch parent canActivate to return true and track calls
+    const parentProto = Object.getPrototypeOf(JwtAuthGuard.prototype);
+    const superSpy = jest.spyOn(parentProto, 'canActivate').mockReturnValue(true as any);
+
+    const guard = new JwtAuthGuard() as any;
+    const ctx = {
+      switchToHttp: () => ({ getRequest: () => ({}) }),
+    } as unknown as ExecutionContext;
+
+    const res = guard.canActivate(ctx);
     expect(res).toBe(true);
-    expect(spy).toHaveBeenCalledWith(context);
+    expect(superSpy).toHaveBeenCalledWith(ctx);
   });
 });
