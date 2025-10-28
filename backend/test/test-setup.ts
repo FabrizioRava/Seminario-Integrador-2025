@@ -44,3 +44,11 @@ export function initRepositoryMocks(module: TestingModule, entity: any, mockData
   
   return repository;
 }
+
+// Silenciar errores ruidosos en tests (por ejemplo, rutas de estadísticas simulando fallos)
+beforeAll(() => {
+  jest.spyOn(console, 'error').mockImplementation(() => {});
+});
+afterAll(() => {
+  jest.restoreAllMocks();
+});

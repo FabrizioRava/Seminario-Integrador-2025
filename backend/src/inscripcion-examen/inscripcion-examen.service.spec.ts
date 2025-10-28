@@ -545,4 +545,42 @@ jest.spyOn(mockCorrelativasService, 'verificarInscripcionExamenFinal').mockResol
       });
     });
   });
+
+  describe('removerInscripcionDeEstudiante', () => {
+    it('should forbid when student does not own the inscription', async () => {
+      const inscripcionExamenId = 10;
+      const estudianteId = 99; // distinto del dueño
+      const inscripcionExamen = {
+        id: inscripcionExamenId,
+        inscripcion: { estudiante: { id: 1 } },
+        examenFinal: { id: 5, inscriptos: 2 },
+      } as any;
+
+      jest.spyOn(mockInscripcionExamenRepo, 'findOne').mockResolvedValue(inscripcionExamen);
+
+      await expect(
+        service.removerInscripcionDeEstudiante(inscripcionExamenId, estudianteId),
+      ).rejects.toThrow('No puede cancelar una inscripción que no es suya');
+    });
+
+    it('should remove when student owns the inscription and decrement exam count', async () => {
+      const inscripcionExamenId = 11;
+      const estudianteId = 7;
+      const inscripcionExamen = {
+        id: inscripcionExamenId,
+        inscripcion: { estudiante: { id: estudianteId } },
+        examenFinal: { id: 6, inscriptos: 3 },
+      } as any;
+
+      jest.spyOn(mockInscripcionExamenRepo, 'findOne').mockResolvedValue(inscripcionExamen);
+      jest.spyOn(mockInscripcionExamenRepo, 'delete').mockResolvedValue({} as any);
+      jest.spyOn(mockExamenRepo, 'update').mockResolvedValue({} as any);
+
+      await service.removerInscripcionDeEstudiante(inscripcionExamenId, estudianteId);
+
+      expect(mockInscripcionExamenRepo.findOne).toHaveBeenCalled();
+      expect(mockInscripcionExamenRepo.delete).toHaveBeenCalledWith(inscripcionExamenId);
+      expect(mockExamenRepo.update).toHaveBeenCalledWith(6, { inscriptos: 2 });
+    });
+  });
 });
