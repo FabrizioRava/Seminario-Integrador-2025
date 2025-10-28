@@ -28,6 +28,7 @@ describe('AuthService', () => {
       findByLegajo: jest.fn(),
       findByEmailWithPassword: jest.fn(),
       findByLegajoWithPassword: jest.fn(),
+      findById: jest.fn(),
       create: jest.fn(),
     };
 
@@ -94,6 +95,14 @@ describe('AuthService', () => {
       });
     });
 
+    it('should throw when password is missing', async () => {
+      const userData = {
+        nombre: 'Sin', apellido: 'Pass', email: 's@p.com', legajo: '1', dni: '2',
+      } as any;
+      await expect(service.register(userData)).rejects.toThrow('La contraseña es obligatoria');
+      expect(mockUserService.create).not.toHaveBeenCalled();
+    });
+
     it('should register a user with default role if not provided', async () => {
       // Arrange
       const userData: CreateUserDto = {
@@ -152,6 +161,13 @@ describe('AuthService', () => {
       (mockUserService.findByEmailWithPassword as jest.Mock).mockResolvedValue(user as User);
       (bcrypt.compare as any).mockResolvedValue(true);
 
+      // Arrange full user
+      (mockUserService.findById as jest.Mock).mockResolvedValue({
+        id: 1,
+        rol: 'estudiante',
+        planEstudio: undefined,
+      });
+
       // Act
       const result = await service.login(email, password);
 
@@ -178,6 +194,12 @@ describe('AuthService', () => {
       });
     });
 
+    it('should throw when identifier or password missing', async () => {
+      await expect(service.login('', '')).rejects.toThrow('Se requieren el correo/legajo y la contraseña');
+      await expect(service.login('a', '')).rejects.toThrow('Se requieren el correo/legajo y la contraseña');
+      await expect(service.login('', 'b')).rejects.toThrow('Se requieren el correo/legajo y la contraseña');
+    });
+
     it('should return null when user is not found', async () => {
       // Arrange
       const email = 'juan.perez@example.com';
@@ -193,6 +215,17 @@ describe('AuthService', () => {
       // Assert
       expect(result).toBeNull();
       expect(mockUserService.findByEmailWithPassword).toHaveBeenCalledWith(email);
+    });
+
+    it('should return null when full user cannot be loaded', async () => {
+      const email = 'a@b.com';
+      const user: any = { id: 1, email, password: 'h', legajo: 'L', rol: 'estudiante' };
+      (mockUserService.findByLegajoWithPassword as jest.Mock).mockResolvedValue(null);
+      (mockUserService.findByEmailWithPassword as jest.Mock).mockResolvedValue(user);
+      (bcrypt.compare as any).mockResolvedValue(true);
+      (mockUserService.findById as jest.Mock).mockResolvedValue(null);
+      const res = await service.login(email, 'p');
+      expect(res).toBeNull();
     });
 
     it('should return null when password is invalid', async () => {

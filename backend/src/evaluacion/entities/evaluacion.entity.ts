@@ -26,10 +26,10 @@ export class Evaluacion {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  // Relación con la inscripción del estudiante a la materia
-  @ManyToOne(() => Inscripcion, inscripcion => inscripcion.evaluaciones, { onDelete: 'CASCADE' })
+  // Relación con la inscripción del estudiante a la materia (opcional)
+  @ManyToOne(() => Inscripcion, inscripcion => inscripcion.evaluaciones, { nullable: true, onDelete: 'CASCADE' })
   @JoinColumn({ name: 'inscripcionId' })
-  inscripcion: Inscripcion;
+  inscripcion?: Inscripcion;
 
   // Materia (redundante pero útil para consultas)
   @ManyToOne(() => Materia, materia => materia.evaluaciones)

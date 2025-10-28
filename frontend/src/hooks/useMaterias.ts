@@ -44,7 +44,21 @@ export function useMaterias() {
         const data = await response.json();
         const materiasResponse = Array.isArray(data?.data) ? data.data : data;
 
-        const mappedMaterias: Materia[] = materiasResponse.map((materia: any) => ({
+        type MateriaApi = {
+          id: number;
+          nombre: string;
+          descripcion?: string;
+          codigo: string;
+          creditos: number;
+          horasSemanales: number;
+          carreraId: number;
+          planEstudioId: number;
+          año: number;
+          cuatrimestre: number;
+          correlativas?: number[];
+        };
+
+        const mappedMaterias: Materia[] = (materiasResponse as MateriaApi[]).map((materia) => ({
           id: materia.id,
           nombre: materia.nombre,
           descripcion: materia.descripcion,

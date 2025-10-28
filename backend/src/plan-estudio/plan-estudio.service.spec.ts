@@ -165,6 +165,13 @@ describe('PlanEstudioService', () => {
       expect(mockPlanRepo.save).toHaveBeenCalledWith(expect.objectContaining({ carrera: newCarrera }));
       expect(result).toEqual(mapToDto(updatedPlan));
     });
+
+    it('should throw NotFound when carreraId is invalid on update', async () => {
+      const existingPlan = createPlan();
+      mockPlanRepo.findOne.mockResolvedValue(existingPlan);
+      mockCarreraRepo.findOne.mockResolvedValue(null);
+      await expect(service.update(1, { carreraId: 999 } as any)).rejects.toThrow('Carrera no encontrada');
+    });
   });
 
   describe('remove', () => {

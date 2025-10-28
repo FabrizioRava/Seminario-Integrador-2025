@@ -8,6 +8,9 @@ import { Materia } from '../materia/entities/materia.entity';
 import { Inscripcion } from '../inscripcion/entities/inscripcion.entity';
 import { CorrelativasCursada } from './entities/correlativas-cursada.entity';
 import { CorrelativasFinal } from './entities/correlativas-final.entity';
+import { CorrelativasCursadaPlan } from './entities/correlativas-cursada-plan.entity';
+import { CorrelativasFinalPlan } from './entities/correlativas-final-plan.entity';
+import { MateriaPlanEstudio } from '../materia/entities/materia-plan-estudio.entity';
 
 // Función utilitaria para crear mocks de repositorios (con tipado mejorado)
 const mockRepository = () => ({
@@ -44,7 +47,19 @@ describe('CorrelativasService', () => {
           useValue: mockRepository(),
         },
         {
-          provide: getRepositoryToken(CorrelativasFinal), // Este mock debe existir aquí
+          provide: getRepositoryToken(CorrelativasFinal),
+          useValue: mockRepository(),
+        },
+        {
+          provide: getRepositoryToken(CorrelativasCursadaPlan),
+          useValue: mockRepository(),
+        },
+        {
+          provide: getRepositoryToken(CorrelativasFinalPlan),
+          useValue: mockRepository(),
+        },
+        {
+          provide: getRepositoryToken(MateriaPlanEstudio),
           useValue: mockRepository(),
         },
       ],
@@ -151,6 +166,20 @@ describe('CorrelativasService', () => {
       });
     });
 
+    it('should include fallback correlativa when nombre missing', async () => {
+      mockMateriaRepo.findOne.mockResolvedValue({
+        id: 1,
+        nombre: 'Álgebra',
+        correlativasCursada: [
+          { correlativa: { id: 9 } } as any, // falta nombre
+        ],
+      } as unknown as Materia);
+      mockInscripcionRepo.find.mockResolvedValue([]);
+      const res = await service.verificarCorrelativasCursada(1, 1);
+      expect(res.cumple).toBe(false);
+      expect(res.faltantes).toEqual([{ id: 9, nombre: 'Materia desconocida' }]);
+    });
+
     it('should throw NotFoundException when materia not found', async () => {
       // Arrange
       mockMateriaRepo.findOne.mockResolvedValue(null);
@@ -180,6 +209,51 @@ describe('CorrelativasService', () => {
       // Assert
       expect(result).toEqual({ cumple: true, faltantes: [] });
     });
+
+    it('should return faltantes when finals not approved', async () => {
+      mockMateriaRepo.findOne.mockResolvedValue({
+        id: 1,
+        nombre: 'Matemática',
+        correlativasFinal: [
+          { correlativa: { id: 9, nombre: 'Álgebra' } } as unknown as CorrelativasFinal,
+        ],
+      } as unknown as Materia);
+
+      mockInscripcionRepo.find.mockResolvedValue([
+        {
+          id: 1,
+          stc: 'cursada',
+          materia: { id: 9, nombre: 'Álgebra' },
+        } as unknown as Inscripcion,
+      ]);
+
+      const result = await service.verificarCorrelativasFinales(1, 1);
+      expect(result.cumple).toBe(false);
+      expect(result.faltantes).toEqual([{ id: 9, nombre: 'Álgebra' }]);
+    });
+
+    it('should include fallback nombre for finales when missing', async () => {
+      mockMateriaRepo.findOne.mockResolvedValue({
+        id: 1,
+        nombre: 'X',
+        correlativasFinal: [ { correlativa: { id: 5 } } as any ],
+      } as any);
+      mockInscripcionRepo.find.mockResolvedValue([]);
+      const res = await service.verificarCorrelativasFinales(1, 1);
+      expect(res.cumple).toBe(false);
+      expect(res.faltantes).toEqual([{ id: 5, nombre: 'Materia desconocida' }]);
+    });
+  });
+
+  describe('verificarTodasCorrelativas', () => {
+    it('should aggregate results and compute aprobado correctly', async () => {
+      jest.spyOn(service, 'verificarCorrelativasCursada').mockResolvedValue({ cumple: true, faltantes: [] });
+      jest.spyOn(service, 'verificarCorrelativasFinales').mockResolvedValue({ cumple: false, faltantes: [{ id:1, nombre:'X'}] });
+      const res = await service.verificarTodasCorrelativas(1, 2);
+      expect(res.cursada.cumple).toBe(true);
+      expect(res.final.cumple).toBe(false);
+      expect(res.aprobado).toBe(false);
+    });
   });
 
   describe('verificarInscripcionExamenFinal', () => {
@@ -207,7 +281,7 @@ describe('CorrelativasService', () => {
       // Assert
       expect(result).toEqual({
         cumple: true,
-        mensaje: 'Correlativas verificadas correctamente',
+        faltantes: [],
       });
     });
 
@@ -225,16 +299,25 @@ describe('CorrelativasService', () => {
         inscripcion as unknown as Inscripcion,
       );
 
+      // Arrange correlativas finales
+      jest
+        .spyOn(service, 'verificarCorrelativasFinales')
+        .mockResolvedValue({ cumple: false, faltantes: [] });
+
       // Act
       const result = await service.verificarInscripcionExamenFinal(1, 1);
 
-      // Assert
-      expect(result).toEqual({
-        cumple: false,
-        // FIX: Insert line break for Prettier
-        mensaje:
-          'No puedes inscribirte a examen final si no has cursado la materia',
-      });
+      // Assert - el servicio refleja el resultado de correlativas finales
+      expect(result).toEqual({ cumple: false, faltantes: [] });
+    });
+
+    it('should throw BadRequest when inscription missing or belongs to other student', async () => {
+      // missing
+      (mockInscripcionRepo.findOne as jest.Mock).mockResolvedValueOnce(null);
+      await expect(service.verificarInscripcionExamenFinal(5, 99)).rejects.toThrow('Inscripción no encontrada o no pertenece al estudiante');
+      // belongs to another
+      (mockInscripcionRepo.findOne as jest.Mock).mockResolvedValueOnce({ id: 9, estudiante: { id: 2 }, materia: { id: 3 } } as any);
+      await expect(service.verificarInscripcionExamenFinal(1, 9)).rejects.toThrow('Inscripción no encontrada o no pertenece al estudiante');
     });
   });
 });

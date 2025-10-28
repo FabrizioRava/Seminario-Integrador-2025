@@ -38,6 +38,7 @@ describe('UserService', () => {
       findOne: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
+      preload: jest.fn(),
       createQueryBuilder: jest.fn(),
       count: jest.fn(),
     };
@@ -253,6 +254,23 @@ describe('UserService', () => {
     });
   });
 
+  describe('findByLegajo', () => {
+    it('should return a user by legajo if found', async () => {
+      const qb = createQueryBuilderMock();
+      qb.getOne.mockResolvedValue({ id: 2, legajo: '123', planEstudio: { id: 1, nombre: 'Plan', carrera: { id: 1, nombre: 'Carrera' } } } as any);
+      mockUserRepo.createQueryBuilder.mockReturnValue(qb);
+      const res = await service.findByLegajo('123');
+      expect(res).toEqual(expect.objectContaining({ id: 2, legajo: '123' }));
+    });
+    it('should return undefined when not found', async () => {
+      const qb = createQueryBuilderMock();
+      qb.getOne.mockResolvedValue(null);
+      mockUserRepo.createQueryBuilder.mockReturnValue(qb);
+      const res = await service.findByLegajo('x');
+      expect(res).toBeUndefined();
+    });
+  });
+
   describe('findById', () => {
     it('should return a user if found', async () => {
       const createdAt = new Date('2024-01-01T00:00:00Z');
@@ -364,6 +382,41 @@ describe('UserService', () => {
       expect(mockUserRepo.count).toHaveBeenCalled();
       expect(qb.skip).toHaveBeenCalledWith(0);
       expect(qb.take).toHaveBeenCalledWith(10);
+    });
+  });
+
+  describe('findWithFilters', () => {
+    it('should apply filters and paginate', async () => {
+      const qb = createQueryBuilderMock();
+      qb.getCount.mockResolvedValue(2);
+      qb.getMany.mockResolvedValue([]);
+      mockUserRepo.createQueryBuilder.mockReturnValue(qb);
+
+      const res = await service.findWithFilters({ legajo: '12', nombre: 'Ju', apellido: 'Pe', dni: '1234', year: 2024 }, 2, 5);
+      expect(qb.andWhere).toHaveBeenCalledWith('user.legajo ILIKE :legajo', { legajo: '%12%' });
+      expect(qb.andWhere).toHaveBeenCalledWith('user.nombre ILIKE :nombre', { nombre: '%Ju%' });
+      expect(qb.andWhere).toHaveBeenCalledWith('user.apellido ILIKE :apellido', { apellido: '%Pe%' });
+      expect(qb.andWhere).toHaveBeenCalledWith('user.dni ILIKE :dni', { dni: '%1234%' });
+      expect(qb.andWhere).toHaveBeenCalledWith('EXTRACT(YEAR FROM user.createdAt) = :year', { year: 2024 });
+      expect(res.total).toBe(2);
+      expect(res.page).toBe(2);
+      expect(res.limit).toBe(5);
+    });
+  });
+
+  describe('findByEmailWithPassword/LegajoWithPassword', () => {
+    it('should return user or undefined for email with password', async () => {
+      mockUserRepo.findOne.mockResolvedValueOnce({ id: 1 });
+      await expect(service.findByEmailWithPassword('a@b.com')).resolves.toEqual({ id: 1 });
+      mockUserRepo.findOne.mockResolvedValueOnce(null);
+      await expect(service.findByEmailWithPassword('x@y.com')).resolves.toBeUndefined();
+    });
+
+    it('should return user or undefined for legajo with password', async () => {
+      mockUserRepo.findOne.mockResolvedValueOnce({ id: 2 });
+      await expect(service.findByLegajoWithPassword('123')).resolves.toEqual({ id: 2 });
+      mockUserRepo.findOne.mockResolvedValueOnce(null);
+      await expect(service.findByLegajoWithPassword('456')).resolves.toBeUndefined();
     });
   });
 

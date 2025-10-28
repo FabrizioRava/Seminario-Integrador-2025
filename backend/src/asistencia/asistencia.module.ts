@@ -7,9 +7,11 @@ import { User } from '../user/entities/user.entity';
 import { Inscripcion } from '../inscripcion/entities/inscripcion.entity';
 import { AsistenciaService } from './asistencia.service';
 import { AsistenciaController } from './asistencia.controller';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
   imports: [
+    AuthModule, // ✅ Necesario para JwtAuthGuard
     TypeOrmModule.forFeature([Asistencia, Clase, User, Inscripcion]),
   ],
   providers: [AsistenciaService],

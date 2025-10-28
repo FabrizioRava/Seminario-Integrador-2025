@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosHeaders, InternalAxiosRequestConfig } from 'axios';
 
 // Configuración de la URL base de la API
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
@@ -21,18 +21,20 @@ export const setAuthToken = (token: string | null) => {
     api.defaults.headers.common['Authorization'] = authToken;
     if (typeof window !== 'undefined') {
       localStorage.setItem('auth_token', token);
+      localStorage.setItem('token', token); // compatibilidad con formato antiguo
     }
   } else {
     delete api.defaults.headers.common['Authorization'];
     if (typeof window !== 'undefined') {
       localStorage.removeItem('auth_token');
+      localStorage.removeItem('token');
     }
   }
 };
 
-// Configurar el token inicial si existe
+// Configurar el token inicial si existe (solo en el contexto de autenticación)
 if (typeof window !== 'undefined') {
-  const token = localStorage.getItem('auth_token');
+  const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
   if (token) {
     setAuthToken(token);
   }
@@ -41,12 +43,25 @@ if (typeof window !== 'undefined') {
 // Interceptor para agregar el token de autenticación a cada solicitud
 // Configurar interceptor de solicitud
 api.interceptors.request.use(
-  (config) => {
+  (config: InternalAxiosRequestConfig) => {
     if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('auth_token');
+      const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
       if (token) {
-        config.headers = config.headers || {};
-        config.headers.Authorization = `Bearer ${token}`;
+        if (config.headers) {
+          if (config.headers instanceof AxiosHeaders) {
+            if (!config.headers.has('Authorization')) {
+              config.headers.set('Authorization', `Bearer ${token}`);
+            }
+          } else {
+            const headers = (config.headers as unknown as Record<string, string>);
+            if (!headers.Authorization) {
+              headers.Authorization = `Bearer ${token}`;
+            }
+            config.headers = headers as unknown as AxiosHeaders;
+          }
+        } else {
+          config.headers = new AxiosHeaders({ Authorization: `Bearer ${token}` });
+        }
       }
     }
     return config;
@@ -80,9 +95,18 @@ api.interceptors.response.use(
       if (typeof window !== 'undefined') {
         const currentPath = window.location.pathname;
         const isAuthRoute = currentPath.includes('/login') || currentPath.includes('/auth');
-        
+        const isInscripcionRoute = currentPath.includes('/inscripciones');
+        const isHorarioRoute = currentPath.includes('/mi-horario');
+
+        // Para rutas protegidas que manejan errores 401 internamente, no redirigir automáticamente
+        // Dejar que el componente maneje el error 401
+        if (isInscripcionRoute || isHorarioRoute) {
+          // 401 on protected route; let component handle it
+          return Promise.reject(error);
+        }
+
         if (!isAuthRoute) {
-          console.log('Sesión expirada o inválida, redirigiendo al login...');
+          // Session expired or invalid; redirecting to login
           localStorage.removeItem('auth_token');
           delete api.defaults.headers.common['Authorization'];
           window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;

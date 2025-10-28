@@ -10,7 +10,7 @@ import { Departamento } from '../departamento/entities/departamento.entity';
 import { MateriaPlanEstudio } from './entities/materia-plan-estudio.entity';
 import { MateriaResponseDto } from './dto/materia-response.dto';
 import { PaginatedResponseDto } from '../common/dto/paginated-response.dto';
-import { Inscripcion } from '../inscripcion/entities/inscripcion.entity';
+// import { Inscripcion } // from '../../inscripcion/entities/inscripcion.entity';
 
 @Injectable()
 export class MateriaService {
@@ -269,9 +269,8 @@ export class MateriaService {
         'planEstudio.nombre',
         'carrera.id',
         'carrera.nombre',
-        'comision.id',
+'comision.id',
         'comision.nombre',
-        'comision.cupoDisponible',
         'comision.cupoMaximo',
         'horario.dia',
         'horario.horaInicio',
@@ -290,6 +289,8 @@ export class MateriaService {
   }
 
   async usuarioTieneAccesoAlPlan(userId: number, planEstudioId: number): Promise<boolean> {
+    console.log(`🔍 Verificando acceso del usuario ${userId} al plan ${planEstudioId}`);
+
     const user = await this.userRepository
       .createQueryBuilder('user')
       .leftJoinAndSelect('user.planEstudio', 'planEstudio')
@@ -297,8 +298,53 @@ export class MateriaService {
       .select(['user.id'])
       .addSelect(['planEstudio.id'])
       .getOne();
-  
-    return user?.planEstudio?.id === planEstudioId;
+
+    console.log('Usuario encontrado:', {
+      userId: user?.id,
+      planEstudioId: user?.planEstudio?.id,
+      requestedPlanId: planEstudioId
+    });
+
+    const tieneAcceso = user?.planEstudio?.id === planEstudioId;
+    console.log('¿Tiene acceso?', tieneAcceso);
+
+    return tieneAcceso;
+  }
+
+  async findMateriasDisponibles(estudianteId: number): Promise<MateriaResponseDto[]> {
+    const estudiante = await this.userRepository.findOne({ where: { id: estudianteId } });
+    if (!estudiante?.planEstudio?.carrera) {
+      throw new NotFoundException('Estudiante o carrera no encontrados');
+    }
+    // Departamento "Básicas"
+    await this.departamentoRepo.findOne({ where: { nombre: 'Básicas' } });
+    const materias = await this.materiaRepository.createQueryBuilder('materia').getMany();
+    return materias.map(m => this.mapToResponseDto(m));
+  }
+
+  async findMateriasByPlanEstudio(planEstudioId: number): Promise<MateriaResponseDto[]> {
+    const materias = await this.materiaRepository
+      .createQueryBuilder('materia')
+      .leftJoinAndSelect('materia.relacionesConPlanes', 'relacion')
+      .leftJoinAndSelect('relacion.planEstudio', 'planEstudio')
+      .leftJoinAndSelect('planEstudio.carrera', 'carrera')
+      .leftJoinAndSelect('materia.departamento', 'departamento')
+      .where('relacion.planEstudioId = :planEstudioId', { planEstudioId })
+      .select([
+        'materia.id',
+        'materia.nombre',
+        'materia.descripcion',
+        'departamento.id',
+        'departamento.nombre',
+        'relacion.nivel',
+        'planEstudio.id',
+        'planEstudio.nombre',
+        'carrera.id',
+        'carrera.nombre',
+      ])
+      .getMany();
+
+    return materias.map(materia => this.mapToResponseDto(materia));
   }
 
   private mapToResponseDto(materia: Materia): MateriaResponseDto {
@@ -310,6 +356,15 @@ export class MateriaService {
         id: materia.departamento.id,
         nombre: materia.departamento.nombre,
       },
+      nivel: materia.relacionesConPlanes?.[0]?.nivel,
+      correlativasCursada: materia.correlativasCursada?.map(c => ({
+        id: c.correlativa.id,
+        nombre: c.correlativa.nombre,
+      })) || [],
+      correlativasFinal: materia.correlativasFinal?.map(c => ({
+        id: c.correlativa.id,
+        nombre: c.correlativa.nombre,
+      })) || [],
       planesEstudio: materia.relacionesConPlanes?.map(r => ({
         planEstudioId: r.planEstudio.id,
         planEstudioNombre: r.planEstudio.nombre,

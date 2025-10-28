@@ -31,7 +31,6 @@ import {
   UserCheck,
   BarChart,
   Clock,
-  X,
 } from 'lucide-react';
 
 interface NavItem {

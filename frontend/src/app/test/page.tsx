@@ -4,42 +4,36 @@ import { useEffect, useState } from 'react';
 import api from '@/lib/api';
 import axios from 'axios';
 
+type MateriaTest = {
+  nombre: string;
+  comisiones?: unknown[];
+};
+
 export default function TestPage() {
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<MateriaTest[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    console.log('TestPage: Cargando...');
 
     const fetchData = async () => {
       try {
         const token = localStorage.getItem('token');
         const user = localStorage.getItem('user');
 
-        console.log('TestPage - Token disponible:', !!token);
-        console.log('TestPage - Usuario en localStorage:', user ? JSON.parse(user).email : 'No hay usuario');
 
         if (!token) {
-          console.log('TestPage - No hay token');
           setError('No hay token de autenticación');
           setLoading(false);
           return;
         }
 
-        console.log('TestPage - Haciendo petición de prueba a /materia/disponibles...');
         const response = await api.get('/materia/disponibles');
-        console.log('TestPage - Respuesta recibida:', response.data);
         setData(response.data);
       } catch (error) {
         console.error('TestPage - Error:', error);
 
         if (axios.isAxiosError(error)) {
-          console.log('TestPage - Error axios:', {
-            status: error.response?.status,
-            url: error.config?.url,
-            data: error.response?.data
-          });
 
           if (error.response?.status === 401) {
             setError('Error 401: No autorizado');
@@ -51,7 +45,6 @@ export default function TestPage() {
         }
       } finally {
         setLoading(false);
-        console.log('TestPage - Carga finalizada');
       }
     };
 

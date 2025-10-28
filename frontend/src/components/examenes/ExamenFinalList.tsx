@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { Calendar, Clock, User, BookOpen, Users, Check, X, AlertCircle, Book, ClipboardCheck } from 'lucide-react';
+import { Calendar, Clock, User, BookOpen, ClipboardCheck } from 'lucide-react';
 import { format, parseISO, isAfter } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -54,7 +54,7 @@ export function ExamenFinalList() {
     setInscribiendo(examen.id);
     try {
       // Realizar inscripción
-      await ExamenFinalService.inscribirAExamen(examen.id, user.id);
+      await ExamenFinalService.inscribirAExamen(examen.id);
       
       toast({
         title: '¡Inscripción exitosa!',

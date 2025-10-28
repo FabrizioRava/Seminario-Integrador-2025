@@ -215,16 +215,16 @@ autogestion/
     └── public/           # Archivos estáticos
 ```
 
-## 🧪 Testing
+## Testing
 
 ### Backend
 ```bash
 cd backend
-# Pruebas unitarias
+# Pruebas unitarias e integración
 npm run test
 
-# Pruebas e2e
-npm run test:e2e
+# Pruebas e2e (usa SQLite en memoria)
+NODE_ENV=test npm run test:e2e
 
 # Cobertura
 npm run test:cov
@@ -240,7 +240,7 @@ npm run test
 npm run test:coverage
 ```
 
-## 🔒 Seguridad
+## Seguridad
 
 - ✅ Autenticación JWT
 - ✅ Encriptación de contraseñas con Bcrypt

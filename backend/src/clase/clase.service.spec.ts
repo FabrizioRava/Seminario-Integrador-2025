@@ -10,6 +10,7 @@ import { User } from '../user/entities/user.entity';
 import { Inscripcion } from '../inscripcion/entities/inscripcion.entity';
 import { Comision } from '../comision/entities/comision.entity';
 import { EstadoClase } from './entities/clase.entity';
+import { BadRequestException } from '@nestjs/common';
 
 describe('ClaseService', () => {
   let service: ClaseService;
@@ -124,6 +125,38 @@ describe('ClaseService', () => {
         relations: ['inscripciones', 'inscripciones.estudiante', 'comisiones']
       });
     });
+
+    it('should throw NotFoundException when horario not found', async () => {
+      jest.spyOn(mockMateriaRepo, 'findOne').mockResolvedValue({ id: 1, inscripciones: [], comisiones: [] } as any);
+      jest.spyOn(mockHorarioRepo, 'findOne').mockResolvedValue(null);
+      await expect(service.crearClase(1, new Date(), 99)).rejects.toThrow('Horario no encontrado');
+    });
+
+    it('should throw NotFoundException when comision not found', async () => {
+      jest.spyOn(mockMateriaRepo, 'findOne').mockResolvedValue({ id: 1, inscripciones: [], comisiones: [] } as any);
+      jest.spyOn(mockHorarioRepo, 'findOne').mockResolvedValue({ id: 2 } as any);
+      jest.spyOn(mockComisionRepo, 'findOne').mockResolvedValue(null);
+      await expect(service.crearClase(1, new Date(), 2, 3)).rejects.toThrow('Comisión no encontrada');
+    });
+
+    it('should throw BadRequestException when overlapping class exists', async () => {
+      jest.spyOn(mockMateriaRepo, 'findOne').mockResolvedValue({ id: 1, inscripciones: [], comisiones: [] } as any);
+      jest.spyOn(mockClaseRepo, 'findOne').mockResolvedValue({ id: 123 } as any);
+      await expect(service.crearClase(1, new Date())).rejects.toThrow(BadRequestException);
+    });
+
+    it('should create asistencias when estado=REALIZADA', async () => {
+      const materia = { id: 1, inscripciones: [{ estudiante: { id: 1 } }] } as any;
+      jest.spyOn(mockMateriaRepo, 'findOne').mockResolvedValue(materia);
+      jest.spyOn(mockHorarioRepo, 'findOne').mockResolvedValue(undefined as any);
+      jest.spyOn(mockClaseRepo, 'findOne').mockResolvedValue(null);
+      jest.spyOn(mockClaseRepo, 'create').mockImplementation((data) => data);
+      jest.spyOn(mockClaseRepo, 'save').mockResolvedValue({ id: 1 } as any);
+      jest.spyOn(mockClaseRepo.manager, 'save').mockResolvedValue(undefined);
+
+      await service.crearClase(1, new Date(), undefined, undefined, EstadoClase.REALIZADA);
+      expect(mockClaseRepo.manager.save).toHaveBeenCalled();
+    });
   });
 
   describe('obtenerClasesPorMateria', () => {
@@ -193,6 +226,21 @@ describe('ClaseService', () => {
       expect(mockClaseRepo.save).toHaveBeenCalled();
     });
 
+    it('should clear comision when comisionId=null', async () => {
+      const cls = { id: 1, comision: { id: 2 }, asistencias: [], materia: { inscripciones: [] } } as any;
+      jest.spyOn(mockClaseRepo, 'findOne').mockResolvedValue(cls);
+      jest.spyOn(mockClaseRepo, 'save').mockImplementation(async (c: any) => c);
+      const res = await service.actualizarClase(1, undefined, undefined, undefined, null);
+      expect(res.comision).toBeNull();
+    });
+
+    it('should throw NotFoundException when comision not found', async () => {
+      const cls = { id: 1, asistencias: [], materia: { inscripciones: [] } } as any;
+      jest.spyOn(mockClaseRepo, 'findOne').mockResolvedValue(cls);
+      jest.spyOn(mockComisionRepo, 'findOne').mockResolvedValue(null);
+      await expect(service.actualizarClase(1, undefined, undefined, undefined, 99)).rejects.toThrow('Comisión no encontrada');
+    });
+
     it('should throw NotFoundException when clase not found', async () => {
       // Arrange
       jest.spyOn(mockClaseRepo, 'findOne').mockResolvedValue(null);
@@ -236,6 +284,31 @@ describe('ClaseService', () => {
         relations: ['materia', 'materia.inscripciones', 'materia.inscripciones.estudiante', 'comision']
       });
       expect(mockClaseRepo.save).toHaveBeenCalled();
+    });
+  });
+
+  describe('obtenerClasesPorEstudiante', () => {
+    it('should build query with joins and order', async () => {
+      const qb: any = { innerJoin: jest.fn().mockReturnThis(), where: jest.fn().mockReturnThis(), orderBy: jest.fn().mockReturnThis(), getMany: jest.fn().mockResolvedValue([]) };
+      jest.spyOn(mockClaseRepo, 'createQueryBuilder').mockReturnValue(qb);
+      await service.obtenerClasesPorEstudiante(42);
+      expect(qb.where).toHaveBeenCalledWith('estudiante.id = :estudianteId', { estudianteId: 42 });
+      expect(qb.orderBy).toHaveBeenCalledWith('clase.fecha', 'DESC');
+    });
+  });
+
+  describe('obtenerClasePorId', () => {
+    it('should throw NotFound when missing', async () => {
+      jest.spyOn(mockClaseRepo, 'findOne').mockResolvedValue(null);
+      await expect(service.obtenerClasePorId(9)).rejects.toThrow('Clase no encontrada');
+    });
+  });
+
+  describe('obtenerClasesPendientesAsistencia', () => {
+    it('should filter out clases with asistencias', async () => {
+      jest.spyOn(mockClaseRepo, 'find').mockResolvedValue([{ id: 1, asistencias: [] }, { id: 2, asistencias: [{ id: 1 }] }] as any);
+      const res = await service.obtenerClasesPendientesAsistencia();
+      expect(res).toEqual([{ id: 1, asistencias: [] }]);
     });
   });
 });

@@ -32,12 +32,12 @@ export class ClaseController {
   @Roles(UserRole.SECRETARIA_ACADEMICA)
   @Post()
   async crearClase(@Body() dto: any) {
-    // Esta solución siempre funciona
     return this.claseService.crearClase(
       dto.materiaId,
       dto.fecha,
       dto.horarioId,
-      dto.estado, // No convertir, dejar que el servicio maneje el tipo
+      dto.comisionId,
+      dto.estado,
       dto.motivoCancelacion,
     );
   }
@@ -52,7 +52,7 @@ export class ClaseController {
   @UseGuards(JwtAuthGuard)
   @Get('mis-clases')
   async obtenerClasesPorEstudiante(@Request() req) {
-    return this.claseService.obtenerClasesPorEstudiante(req.user.userId);
+    return this.claseService.obtenerClasesPorEstudiante(req.user.id);
   }
 
   // 🔒 Secretaría académica: actualizar clase

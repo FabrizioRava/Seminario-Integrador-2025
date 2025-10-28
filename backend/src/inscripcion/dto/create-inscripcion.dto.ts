@@ -1,1 +1,5 @@
-export class CreateInscripcionDto {}
+export class CreateInscripcionDto {
+    materiaId: number;
+    comisionId?: number;
+  }
+  

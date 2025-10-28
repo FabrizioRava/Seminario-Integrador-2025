@@ -224,19 +224,24 @@ export class UserService {
   }
 
   async update(id: number, updateData: UpdateUserDto): Promise<UserResponseDto | undefined> {
-    let planEstudio;
+    // Validar plan de estudio si se envía un ID
+    let planEstudioIdToSet: number | undefined = undefined;
     if (updateData.planEstudioId) {
-      planEstudio = await this.planEstudioService.findOne(updateData.planEstudioId);
+      const plan = await this.planEstudioService.findOne(updateData.planEstudioId);
+      planEstudioIdToSet = plan?.id;
     }
-    
+
     const { planEstudioId, ...rest } = updateData;
+
+    // Ejecutar update directo (más simple para tests) y luego devolver el usuario actualizado
     await this.userRepository.update(id, {
       ...rest,
-      ...(planEstudio ? { planEstudioId: planEstudio.id } : {}),
-    });
-    
+      ...(planEstudioIdToSet ? { planEstudioId: planEstudioIdToSet } : {}),
+    } as any);
+
     return this.findById(id);
   }
+
 
   async remove(id: number): Promise<void> {
     await this.userRepository.delete(id);

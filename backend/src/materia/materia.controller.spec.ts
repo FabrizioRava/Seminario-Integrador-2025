@@ -101,6 +101,9 @@ describe('MateriaController', () => {
             findOne: jest.fn(),
             update: jest.fn(),
             remove: jest.fn(),
+            findWithFilters: jest.fn(),
+            usuarioTieneAccesoAlPlan: jest.fn(),
+            getMateriasPorPlan: jest.fn(),
           },
         },
       ],
@@ -176,7 +179,12 @@ describe('MateriaController', () => {
         limit: 10,
         totalPages: 1,
       });
-      expect(mockMateriaService.findAll).toHaveBeenCalled();
+      expect(mockMateriaService.findAll).toHaveBeenCalledWith(1, 10);
+    });
+
+    it('debería aplicar paginación cuando se pasan page y limit', async () => {
+      await controller.findAll('2' as any, '5' as any);
+      expect(mockMateriaService.findAll).toHaveBeenLastCalledWith(2, 5);
     });
 
     it('debería manejar errores al buscar materias', async () => {
@@ -185,6 +193,51 @@ describe('MateriaController', () => {
 
       // Act & Assert
       await expect(controller.findAll()).rejects.toThrow('Error de base de datos');
+    });
+  });
+
+  describe('search', () => {
+    it('should forward filters and pagination to service', async () => {
+      const paginated = { data: [], total: 0, page: 2, limit: 5, totalPages: 0 };
+      (mockMateriaService.findWithFilters as jest.Mock).mockResolvedValue(paginated);
+      const res = await controller.search('alg', '1' as any, '2' as any, '3' as any, '4' as any, '2' as any, '5' as any);
+      expect(res).toEqual(paginated);
+      expect(mockMateriaService.findWithFilters).toHaveBeenCalledWith(
+        { nombre: 'alg', departamentoId: 1, carreraId: 2, planEstudioId: 3, nivel: 4 }, 2, 5
+      );
+    });
+
+    it('should use defaults when no filters or pagination provided', async () => {
+      const paginated = { data: [], total: 0, page: 1, limit: 10, totalPages: 0 };
+      (mockMateriaService.findWithFilters as jest.Mock).mockResolvedValue(paginated);
+      const res = await controller.search(undefined, undefined, undefined, undefined, undefined, undefined, undefined);
+      expect(res).toEqual(paginated);
+      expect(mockMateriaService.findWithFilters).toHaveBeenCalledWith(
+        { nombre: undefined, departamentoId: undefined, carreraId: undefined, planEstudioId: undefined, nivel: undefined }, 1, 10
+      );
+    });
+  });
+
+  describe('getMateriasPorPlan', () => {
+    it('should throw BadRequestException for invalid id', async () => {
+      await expect(controller.getMateriasPorPlan('x', { user: { id: 1 } } as any)).rejects.toThrow(BadRequestException);
+    });
+
+    it('should throw UnauthorizedException if no user', async () => {
+      await expect(controller.getMateriasPorPlan('1', { user: null } as any)).rejects.toThrow(UnauthorizedException);
+    });
+
+    it('should throw ForbiddenException when no access', async () => {
+      (mockMateriaService.usuarioTieneAccesoAlPlan as jest.Mock).mockResolvedValue(false);
+      await expect(controller.getMateriasPorPlan('1', { user: { id: 9 } } as any)).rejects.toThrow('No tienes permiso para acceder a este plan de estudios');
+    });
+
+    it('should return materias when access granted', async () => {
+      (mockMateriaService.usuarioTieneAccesoAlPlan as jest.Mock).mockResolvedValue(true);
+      (mockMateriaService.getMateriasPorPlan as jest.Mock).mockResolvedValue([mockMateria]);
+      const res = await controller.getMateriasPorPlan('2', { user: { id: 9 } } as any);
+      expect(res).toEqual([mockMateria]);
+      expect(mockMateriaService.getMateriasPorPlan).toHaveBeenCalledWith(2);
     });
   });
 
@@ -208,6 +261,10 @@ describe('MateriaController', () => {
       expect(result).toEqual(expectedResult);
       expect(mockMateriaService.findOne).toHaveBeenCalledWith(1);
     });
+
+    it('should throw BadRequestException when id is invalid', () => {
+      expect(() => controller.findOne('abc' as any)).toThrow(BadRequestException);
+    });
   });
 
   describe('update', () => {
@@ -229,6 +286,10 @@ describe('MateriaController', () => {
       expect(result).toEqual(mockMateria);
       expect(mockMateriaService.update).toHaveBeenCalledWith(1, updateMateriaDto);
     });
+
+    it('should throw BadRequestException when id is invalid', () => {
+      expect(() => controller.update('NaN' as any, {} as any)).toThrow(BadRequestException);
+    });
   });
 
   describe('remove', () => {
@@ -242,6 +303,10 @@ describe('MateriaController', () => {
       // Assert
       expect(result).toEqual(mockMateria);
       expect(mockMateriaService.remove).toHaveBeenCalledWith(1);
+    });
+
+    it('should throw BadRequestException when id is invalid', () => {
+      expect(() => controller.remove('bad' as any)).toThrow(BadRequestException);
     });
   });
 });

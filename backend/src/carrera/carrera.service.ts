@@ -18,13 +18,13 @@ export class CarreraService {
   }
 
   async findAll(): Promise<Carrera[]> {
-    return this.carreraRepository.find({ relations: ['materias'] });
+    return this.carreraRepository.find({ relations: ['planesEstudio'] });
   }
 
   async findOne(id: number): Promise<Carrera> {
     const carrera = await this.carreraRepository.findOne({
       where: { id },
-      relations: ['materias'],
+      relations: ['planesEstudio'],
     });
     if (!carrera) {
       throw new NotFoundException(`Carrera con id ${id} no encontrada`);

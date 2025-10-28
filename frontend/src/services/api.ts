@@ -1,5 +1,4 @@
 import axios, { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
-import { useRouter } from 'next/navigation';
 
 type AuthStorage = {
   token: string;

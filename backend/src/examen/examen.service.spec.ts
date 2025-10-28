@@ -285,6 +285,17 @@ describe('ExamenService', () => {
       });
       expect((service as any).verificarCorrelativasFinal).toHaveBeenCalledWith(userId, materiaId);
     });
+
+    it('should throw when student not found', async () => {
+      jest.spyOn(mockUserRepo, 'findOne').mockResolvedValue(null);
+      await expect(service.inscribirse(9, 1)).rejects.toThrow('Estudiante o materia no encontrados');
+    });
+
+    it('should throw when materia not found', async () => {
+      jest.spyOn(mockUserRepo, 'findOne').mockResolvedValue({ id: 1 } as any);
+      jest.spyOn(mockMateriaRepo, 'findOne').mockResolvedValue(null);
+      await expect(service.inscribirse(1, 9)).rejects.toThrow('Estudiante o materia no encontrados');
+    });
   });
 
   describe('esJefeDeCatedra', () => {
