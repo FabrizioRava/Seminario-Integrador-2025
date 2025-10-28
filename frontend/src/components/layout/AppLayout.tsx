@@ -16,7 +16,7 @@ export function AppLayout({ title, subtitle, actions, children }: AppLayoutProps
 
   return (
     <div className={styles.container}>
-      <Sidebar role={user?.rol ?? 'estudiante'} user={user} onLogout={logout} />
+      <Sidebar />
       <div className={styles.main}>
         <TopBar title={title} subtitle={subtitle} actions={actions} />
         <main className={styles.content}>

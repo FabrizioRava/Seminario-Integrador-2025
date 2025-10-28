@@ -11,9 +11,11 @@ import { Asistencia } from '../asistencia/entities/asistencia.entity';
 import { ClaseService } from './clase.service';
 import { ClaseController } from './clase.controller';
 import { AsistenciaService } from '../asistencia/asistencia.service';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
   imports: [
+    AuthModule, // ✅ Necesario para JwtAuthGuard
     TypeOrmModule.forFeature([Clase, Horario, Materia, User, Inscripcion, Comision, Asistencia]),
   ],
   providers: [ClaseService, AsistenciaService],

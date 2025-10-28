@@ -54,6 +54,14 @@ export class InscripcionExamenController {
     return this.inscripcionExamenService.actualizarEstado(+id, dto);
   }
 
+  // 🔒 Estudiante: cancelar su propia inscripción
+  @UseGuards(JwtAuthGuard)
+  @Delete('mine/:id')
+  async removerInscripcionPropia(@Param('id') id: string, @Request() req) {
+    await this.inscripcionExamenService.removerInscripcionDeEstudiante(+id, req.user.id);
+    return { message: 'Inscripción cancelada correctamente' };
+  }
+
   // 🔒 Secretaría académica: eliminar inscripción
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.SECRETARIA_ACADEMICA)

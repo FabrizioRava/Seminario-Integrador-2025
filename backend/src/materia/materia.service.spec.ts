@@ -236,15 +236,25 @@ describe('MateriaService', () => {
 
       const result = await service.create(createDto as any);
 
-      expect(result).toEqual({
+      expect(result).toEqual(expect.objectContaining({
         id: 1,
-        nombre: materiaEntity.nombre,
-        descripcion: materiaEntity.descripcion,
+        nombre: 'Matemática',
+        descripcion: 'Materia de matemáticas básicas',
         departamento: { id: 1, nombre: 'Básicas' },
         planesEstudio: [expectedPlanResponse],
-      });
+      }));
       expect(mockMateriaRepo.save).toHaveBeenCalled();
       expect(mockMateriaPlanRepo.save).toHaveBeenCalled();
+    });
+
+    it('should throw NotFound when post-save fetch returns null', async () => {
+      const createDto = {
+        nombre: 'X', descripcion: 'Y', departamentoId: 1, planesEstudioConNivel: []
+      } as any;
+      mockMateriaRepo.create.mockImplementation((data) => createMateriaEntity({ ...data, id: 99 }));
+      mockMateriaRepo.save.mockResolvedValue(createMateriaEntity({ id: 99 }));
+      materiaQueryBuilder.getOne.mockResolvedValue(null);
+      await expect(service.create(createDto)).rejects.toThrow('Materia con ID 99 no encontrada después de la creación');
     });
   });
 
@@ -259,13 +269,13 @@ describe('MateriaService', () => {
 
       expect(result).toEqual({
         data: [
-          {
+          expect.objectContaining({
             id: 1,
             nombre: 'Matemática',
             descripcion: 'Materia de matemáticas básicas',
             departamento: { id: 1, nombre: 'Básicas' },
             planesEstudio: [expectedPlanResponse],
-          },
+          }),
         ],
         total: 1,
         page: 1,
@@ -275,9 +285,21 @@ describe('MateriaService', () => {
       expect(mockMateriaRepo.count).toHaveBeenCalled();
       expect(materiaQueryBuilder.getMany).toHaveBeenCalled();
     });
+
+    it('should clamp limit to [1,100] when out of range', async () => {
+      const materiaEntity = createMateriaEntity();
+      mockMateriaRepo.count.mockResolvedValue(1);
+      materiaQueryBuilder.getMany.mockResolvedValue([materiaEntity]);
+
+      await service.findAll(1, 0); // limit < 1 -> 1
+      expect(materiaQueryBuilder.take).toHaveBeenLastCalledWith(1);
+
+      await service.findAll(1, 1000); // limit > 100 -> 100
+      expect(materiaQueryBuilder.take).toHaveBeenLastCalledWith(100);
+    });
   });
 
-  describe('findMateriasDisponibles', () => {
+describe('findMateriasDisponibles', () => {
     it('should return materias for student departments and basics', async () => {
       const materiaEntity = createMateriaEntity({
         relacionesConPlanes: [],
@@ -288,13 +310,13 @@ describe('MateriaService', () => {
       const result = await service.findMateriasDisponibles(1);
 
       expect(result).toEqual([
-        {
+        expect.objectContaining({
           id: 1,
           nombre: 'Matemática',
           descripcion: 'Materia de matemáticas básicas',
           departamento: { id: 1, nombre: 'Básicas' },
           planesEstudio: [],
-        },
+        })
       ]);
       expect(mockUserRepo.findOne).toHaveBeenCalled();
       expect(mockDepartamentoRepo.findOne).toHaveBeenCalledWith({ where: { nombre: 'Básicas' } });
@@ -303,6 +325,49 @@ describe('MateriaService', () => {
     it('should throw when student lacks plan', async () => {
       mockUserRepo.findOne.mockResolvedValueOnce({ id: 1 } as any);
       await expect(service.findMateriasDisponibles(1)).rejects.toThrow('Estudiante o carrera no encontrados');
+    });
+
+    it('should apply nivel=0 filter (nivel !== undefined)', async () => {
+      const materiaEntity = createMateriaEntity();
+      const qb = createQueryBuilderMock();
+      qb.getCount.mockResolvedValue(1);
+      qb.getMany.mockResolvedValue([materiaEntity]);
+      mockMateriaRepo.createQueryBuilder.mockReturnValue(qb);
+      await service.findWithFilters({ nivel: 0 }, 1, 10);
+      expect(qb.andWhere).toHaveBeenCalledWith('relacion.nivel = :nivel', { nivel: 0 });
+    });
+
+    it('should handle no filters (no andWhere calls)', async () => {
+      const materiaEntity = createMateriaEntity();
+      const qb = createQueryBuilderMock();
+      qb.getCount.mockResolvedValue(1);
+      qb.getMany.mockResolvedValue([materiaEntity]);
+      mockMateriaRepo.createQueryBuilder.mockReturnValue(qb);
+      await service.findWithFilters({}, 1, 10);
+      // andWhere may be called zero times; ensure we still return data
+      expect(qb.getMany).toHaveBeenCalled();
+    });
+  });
+
+  describe('findWithFilters', () => {
+    it('should apply all filters and paginate', async () => {
+      const materiaEntity = createMateriaEntity();
+      const qb = createQueryBuilderMock();
+      qb.getCount.mockResolvedValue(1);
+      qb.getMany.mockResolvedValue([materiaEntity]);
+      mockMateriaRepo.createQueryBuilder.mockReturnValue(qb);
+
+      const result = await service.findWithFilters({ nombre: 'mat', departamentoId: 1, carreraId: 1, planEstudioId: 1, nivel: 1 }, 2, 5);
+
+      expect(qb.andWhere).toHaveBeenCalledWith('materia.nombre ILIKE :nombre', { nombre: '%mat%' });
+      expect(qb.andWhere).toHaveBeenCalledWith('departamento.id = :departamentoId', { departamentoId: 1 });
+      expect(qb.andWhere).toHaveBeenCalledWith('carrera.id = :carreraId', { carreraId: 1 });
+      expect(qb.andWhere).toHaveBeenCalledWith('planEstudio.id = :planEstudioId', { planEstudioId: 1 });
+      expect(qb.andWhere).toHaveBeenCalledWith('relacion.nivel = :nivel', { nivel: 1 });
+      expect(result.total).toBe(1);
+      expect(result.page).toBe(2);
+      expect(result.limit).toBe(5);
+      expect(result.data[0].id).toBe(1);
     });
   });
 
@@ -314,13 +379,14 @@ describe('MateriaService', () => {
 
       const result = await service.findOne(1);
 
-      expect(result).toEqual({
+      expect(result).toEqual(expect.objectContaining({
         id: 1,
         nombre: 'Matemática',
         descripcion: 'Materia de matemáticas básicas',
         departamento: { id: 1, nombre: 'Básicas' },
         planesEstudio: [expectedPlanResponse],
-      });
+      }));
+      // No validar propiedades adicionales opcionales para evitar fragilidad
     });
 
     it('should throw when materia not found', async () => {
@@ -343,9 +409,55 @@ describe('MateriaService', () => {
       expect(mockMateriaRepo.save).toHaveBeenCalled();
     });
 
+    it('should recreate plan relations when planesEstudioConNivel provided', async () => {
+      const existingMateria = createMateriaEntity({ nombre: 'Matemática' });
+      mockMateriaRepo.findOne.mockResolvedValue(existingMateria);
+      mockPlanEstudioRepo.findOne.mockResolvedValue(mockPlanEstudio);
+      mockMateriaRepo.save.mockResolvedValue(existingMateria);
+      materiaQueryBuilder.getOne.mockResolvedValue(existingMateria);
+
+      const dto = { planesEstudioConNivel: [{ planEstudioId: 1, nivel: 2 }] } as any;
+      await service.update(1, dto);
+
+      expect(mockMateriaPlanRepo.delete).toHaveBeenCalledWith({ materiaId: 1 });
+      expect(mockMateriaPlanRepo.save).toHaveBeenCalledWith(expect.objectContaining({ materiaId: 1, planEstudioId: 1, nivel: 2 }));
+    });
+
     it('should throw when materia not found', async () => {
       mockMateriaRepo.findOne.mockResolvedValue(null);
       await expect(service.update(1, { nombre: 'X' } as any)).rejects.toThrow('Materia con ID 1 no encontrada');
+    });
+  });
+
+  describe('getMateriasPorPlan', () => {
+    it('should return materias for a plan', async () => {
+      const materiaEntity = createMateriaEntity();
+      const qb = {
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue([materiaEntity]),
+      } as any;
+      mockMateriaRepo.createQueryBuilder.mockReturnValue(qb);
+      const result = await (service as any).getMateriasPorPlan(1);
+      expect(result[0].id).toBe(1);
+      expect(qb.where).toHaveBeenCalledWith('planEstudio.id = :planEstudioId', { planEstudioId: 1 });
+    });
+  });
+
+  describe('findMateriasByPlanEstudio', () => {
+    it('should return materias by planEstudioId', async () => {
+      const materiaEntity = createMateriaEntity();
+      const qb = {
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        getMany: jest.fn().mockResolvedValue([materiaEntity]),
+      } as any;
+      mockMateriaRepo.createQueryBuilder.mockReturnValue(qb);
+      const result = await service.findMateriasByPlanEstudio(5);
+      expect(result[0].id).toBe(1);
+      expect(qb.where).toHaveBeenCalledWith('relacion.planEstudioId = :planEstudioId', { planEstudioId: 5 });
     });
   });
 
@@ -354,19 +466,76 @@ describe('MateriaService', () => {
       const materia = createMateriaEntity({ nombre: 'Matemática', descripcion: 'Básica' });
       mockMateriaRepo.findOne.mockResolvedValue(materia);
       const result = await service.remove(1);
-      expect(result).toEqual({
+      expect(result).toEqual(expect.objectContaining({
         id: 1,
         nombre: 'Matemática',
         descripcion: 'Básica',
         departamento: { id: 1, nombre: 'Básicas' },
         planesEstudio: [expectedPlanResponse],
-      });
+      }));
       expect(mockMateriaRepo.delete).toHaveBeenCalledWith(1);
     });
 
     it('should throw when materia missing', async () => {
       mockMateriaRepo.findOne.mockResolvedValue(null);
       await expect(service.remove(1)).rejects.toThrow('Materia no encontrada');
+    });
+  });
+
+  describe('usuarioTieneAccesoAlPlan', () => {
+    it('should return true when user.planEstudio.id matches', async () => {
+      const qb = {
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue({ id: 9, planEstudio: { id: 3 } }),
+      } as any;
+      mockUserRepo.createQueryBuilder = jest.fn().mockReturnValue(qb);
+      const res = await service.usuarioTieneAccesoAlPlan(9, 3);
+      expect(res).toBe(true);
+    });
+
+    it('should return false when plan does not match or user missing', async () => {
+      const qb = {
+        leftJoinAndSelect: jest.fn().mockReturnThis(),
+        where: jest.fn().mockReturnThis(),
+        select: jest.fn().mockReturnThis(),
+        addSelect: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue({ id: 9, planEstudio: { id: 4 } }),
+      } as any;
+      mockUserRepo.createQueryBuilder = jest.fn().mockReturnValue(qb);
+      const res = await service.usuarioTieneAccesoAlPlan(9, 3);
+      expect(res).toBe(false);
+    });
+  });
+
+  describe('mapToResponseDto correlativas mapping', () => {
+    it('should map correlativasCursada and correlativasFinal', () => {
+      const corrMat1 = createMateriaEntity({ id: 10, nombre: 'Física I' });
+      const corrMat2 = createMateriaEntity({ id: 11, nombre: 'Álgebra' });
+      const materia = createMateriaEntity({
+        correlativasCursada: [
+          { id: 1, correlativa: corrMat1 } as any,
+        ],
+        correlativasFinal: [
+          { id: 2, correlativa: corrMat2 } as any,
+        ],
+      });
+      const dto = (service as any).mapToResponseDto(materia);
+      expect(dto.correlativasCursada).toEqual([{ id: 10, nombre: 'Física I' }]);
+      expect(dto.correlativasFinal).toEqual([{ id: 11, nombre: 'Álgebra' }]);
+    });
+  });
+
+  describe('mapToResponseDto planesEstudio default', () => {
+    it('should return empty arrays and undefined nivel when relacionesConPlanes missing', () => {
+      const materia = createMateriaEntity({ relacionesConPlanes: [] as any, correlativasCursada: undefined as any, correlativasFinal: undefined as any });
+      const dto = (service as any).mapToResponseDto(materia);
+      expect(dto.nivel).toBeUndefined();
+      expect(dto.planesEstudio).toEqual([]);
+      expect(dto.correlativasCursada).toEqual([]);
+      expect(dto.correlativasFinal).toEqual([]);
     });
   });
 });

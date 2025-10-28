@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from 'react';
-import { Calendar, Clock, BookOpen, AlertCircle, Check, X, Book, ClipboardCheck, User, Users } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Calendar, Clock, BookOpen, ClipboardCheck, Users, User, Check, AlertCircle, X, Book } from 'lucide-react';
 import { format, parseISO, isAfter, isBefore } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -18,15 +18,8 @@ export function MisInscripcionesExamenes() {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (user) {
-      cargarInscripciones();
-    }
-  }, [user]);
-
-  const cargarInscripciones = async () => {
+  const cargarInscripciones = useCallback(async () => {
     if (!user) return;
-    
     try {
       const data = await ExamenFinalService.getInscripcionesEstudiante(user.id);
       setInscripciones(data);
@@ -40,7 +33,13 @@ export function MisInscripcionesExamenes() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      cargarInscripciones();
+    }
+  }, [user, cargarInscripciones]);
 
   const handleCancelarInscripcion = async (inscripcionId: number) => {
     if (!confirm('¿Estás seguro de que deseas cancelar esta inscripción?')) return;
@@ -102,11 +101,13 @@ export function MisInscripcionesExamenes() {
   }
 
   // Ordenar por fecha de examen (más cercano primero)
-  const inscripcionesOrdenadas = [...inscripciones].sort((a, b) => {
-    const fechaA = new Date(`${a.examenFinal.fecha}T${a.examenFinal.teorico.horaInicio}`);
-    const fechaB = new Date(`${b.examenFinal.fecha}T${b.examenFinal.teorico.horaInicio}`);
-    return fechaA.getTime() - fechaB.getTime();
-  });
+  const inscripcionesOrdenadas = useMemo(() => {
+    return [...inscripciones].sort((a, b) => {
+      const fechaA = new Date(`${a.examenFinal.fecha}T${a.examenFinal.horaInicioTeorico}`);
+      const fechaB = new Date(`${b.examenFinal.fecha}T${b.examenFinal.horaInicioTeorico}`);
+      return fechaA.getTime() - fechaB.getTime();
+    });
+  }, [inscripciones]);
 
   // Función para formatear la fecha en español
   const formatDate = (dateString: string) => {
@@ -126,7 +127,7 @@ export function MisInscripcionesExamenes() {
       <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
         {inscripcionesOrdenadas.map((inscripcion) => {
           const examen = inscripcion.examenFinal;
-          const fechaHoraExamen = new Date(`${examen.fecha}T${examen.teorico.horaInicio}`);
+          const fechaHoraExamen = new Date(`${examen.fecha}T${examen.horaInicioTeorico}`);
           
           // Verificar si se puede cancelar la inscripción (solo si está pendiente y la fecha es futura)
           const puedeCancelar = 
@@ -151,7 +152,7 @@ export function MisInscripcionesExamenes() {
               <CardContent className="space-y-4">
                 <div className="flex items-center">
                   <Calendar className="h-4 w-4 mr-2 text-gray-600 flex-shrink-0" />
-                  <span className="font-medium">{formatDate(examen.fecha)}</span>
+                  <span className="font-medium">{format(parseISO(examen.fecha), "EEEE d 'de' MMMM 'de' yyyy", { locale: es })}</span>
                 </div>
                 
                 {/* Horario Teórico */}
@@ -164,7 +165,7 @@ export function MisInscripcionesExamenes() {
                     <div className="flex items-center">
                       <Clock className="mr-2 h-4 w-4 text-gray-600" />
                       <span>
-                        {formatTime(examen.teorico.horaInicio)} - {formatTime(examen.teorico.horaFin)}
+                        {examen.teorico.horaInicio} - {examen.teorico.horaFin}
                       </span>
                     </div>
                     <div className="flex items-center">
@@ -185,7 +186,7 @@ export function MisInscripcionesExamenes() {
                       <div className="flex items-center">
                         <Clock className="mr-2 h-4 w-4 text-gray-600" />
                         <span>
-                          {formatTime(examen.practico.horaInicio)} - {formatTime(examen.practico.horaFin)}
+                        {examen.practico.horaInicio} - {examen.practico.horaFin}
                         </span>
                       </div>
                       <div className="flex items-center">

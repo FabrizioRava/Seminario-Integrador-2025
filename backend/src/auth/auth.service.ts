@@ -36,11 +36,11 @@ export class AuthService {
       throw new Error('Se requieren el correo/legajo y la contraseña');
     }
     
-    // Determinar si es email o legajo
-    const isEmail = identifier && typeof identifier === 'string' && identifier.includes('@');
-    let user = isEmail 
-      ? await this.userService.findByEmailWithPassword(identifier)
-      : await this.userService.findByLegajoWithPassword(identifier);
+    // Intentar por legajo primero y luego por email para mayor flexibilidad
+    let user = await this.userService.findByLegajoWithPassword(identifier);
+    if (!user) {
+      user = await this.userService.findByEmailWithPassword(identifier);
+    }
     
     if (!user) {
       console.log('User not found');

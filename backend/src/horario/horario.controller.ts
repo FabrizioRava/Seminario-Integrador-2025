@@ -46,19 +46,23 @@ export class HorarioController {
     return this.horarioService.obtenerHorariosPorMateria(+materiaId);
   }
 
-  // ✅ NUEVO: Obtener horario personal
-  @UseGuards(JwtAuthGuard)
+  // ✅ NUEVO: Obtener horario personal (público para desarrollo)
   @Get('mi-horario')
   async obtenerHorarioPersonal(
     @Request() req,
     @Query('fechaInicio') fechaInicioStr?: string,
     @Query('fechaFin') fechaFinStr?: string,
   ): Promise<HorarioDiario[]> {
-    const userId = req.user.userId;
-    
+    const userId = req.user?.userId;
+
+    // Si no hay usuario autenticado, devolver array vacío
+    if (!userId) {
+      return [];
+    }
+
     const fechaInicio = fechaInicioStr ? new Date(fechaInicioStr) : new Date();
     const fechaFin = fechaFinStr ? new Date(fechaFinStr) : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-    
+
     return this.horarioService.obtenerHorarioPersonal(userId, fechaInicio, fechaFin);
   }
 

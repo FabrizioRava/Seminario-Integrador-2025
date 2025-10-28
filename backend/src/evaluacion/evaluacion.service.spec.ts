@@ -151,6 +151,18 @@ describe('EvaluacionService', () => {
       });
       expect(mockUserRepo.findOne).toHaveBeenCalledWith({ where: { id: estudianteId } });
     });
+
+    it('should set estado DESAPROBADA and omit cargadoPor when nota < 6', async () => {
+      const materiaId = 1;
+      const estudianteId = 2;
+      jest.spyOn(mockInscripcionRepo, 'findOne').mockResolvedValue({ id: 7 } as any);
+      jest.spyOn(mockUserRepo, 'findOne').mockResolvedValue({ id: estudianteId } as any);
+      jest.spyOn(mockEvaluacionRepo, 'create').mockImplementation((d) => d);
+      jest.spyOn(mockEvaluacionRepo, 'save').mockResolvedValue({ id: 22 } as any);
+      const res = await service.crearEvaluacion(materiaId, estudianteId, TipoEvaluacion.PARCIAL, 4);
+      expect(res).toEqual({ id: 22 });
+      expect(mockEvaluacionRepo.create).toHaveBeenCalledWith(expect.objectContaining({ estado: EstadoEvaluacion.DESAPROBADA, cargadoPor: undefined }));
+    });
   });
 
   describe('getEvaluacionesPorMateria', () => {

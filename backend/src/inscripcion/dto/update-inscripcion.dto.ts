@@ -1,1 +1,5 @@
-export class UpdateInscripcionDto {}
+export class UpdateInscripcionDto {
+    materiaId?: number;
+    comisionId?: number;
+  }
+  

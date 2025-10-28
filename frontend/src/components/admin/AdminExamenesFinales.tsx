@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Plus, Calendar, Clock, User, Users, Book, ClipboardCheck, Trash2, Edit, Search, X } from 'lucide-react';
+import { Plus, Calendar, Clock, User, Users, Book, ClipboardCheck, Trash2, Edit, Search } from 'lucide-react';
 import { format, parseISO, isAfter, isBefore } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -667,7 +667,7 @@ export function AdminExamenesFinales() {
       </Dialog>
 
       {/* Diálogo de confirmación para eliminar */}
-      <Dialog open={!!examenAEliminar} onOpenChange={(open) => !open && setExamenAEliminar(null)}>
+<Dialog open={!!examenAEliminar} onOpenChange={(open: boolean) => !open && setExamenAEliminar(null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>¿Estás seguro de eliminar este examen?</DialogTitle>

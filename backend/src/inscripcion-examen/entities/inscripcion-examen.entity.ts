@@ -10,7 +10,7 @@ export class InscripcionExamen {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => Inscripcion, inscripcion => inscripcion.examenesInscritos)
+  @ManyToOne(() => Inscripcion, inscripcion => inscripcion.examenesInscritos, { nullable: true })
   @JoinColumn({ name: 'inscripcionId' })
   inscripcion: Inscripcion;
 

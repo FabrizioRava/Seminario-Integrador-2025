@@ -1,12 +1,16 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Calendar, Clock, MapPin, User, Download, ChevronLeft, ChevronRight } from 'lucide-react';
 import api from '@/lib/api';
 import { cn } from '@/lib/utils';
+import { isAxiosError } from 'axios';
+import axios from 'axios';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface HorarioPlano {
   id: string;
@@ -72,9 +76,9 @@ const normalizarHorarios = (dias: HorarioServidorDia[]): HorarioPlano[] => {
 
   dias.forEach((dia) => {
     dia.bloques.forEach((bloque, index) => {
-      const materia = bloque.materia || {
+      const materia: HorarioPlano['materia'] = bloque.materia ? bloque.materia : {
         id: bloque.materiaId ?? -1,
-        nombre: bloque.materia?.nombre || 'Materia sin nombre',
+        nombre: 'Materia sin nombre',
       };
 
       const comision = bloque.comision
@@ -123,12 +127,35 @@ export default function MiHorarioPage() {
 
   const fetchHorarios = async () => {
     try {
+      console.log('🔍 Cargando horarios del usuario...');
       const response = await api.get<HorarioServidorDia[]>('/horario/mi-horario');
+      console.log('✅ Horarios obtenidos exitosamente:', response.data.length, 'días');
       const planos = normalizarHorarios(response.data);
+      console.log('📊 Horarios procesados:', planos.length, 'bloques');
       setHorarios(planos);
       asignarColores(planos);
-    } catch (error) {
-      console.error('Error al cargar horarios:', error);
+    } catch (error: unknown) {
+      console.error('❌ Error al cargar horarios:', error);
+      if (axios.isAxiosError(error)) {
+        const status = error.response?.status;
+        if (status === 401 || status === 403) {
+          console.log(`🚫 Error ${status} - Problema de permisos`);
+          console.log('Detalles del error:', error.response?.data);
+          // Para este endpoint específico, NO hacer logout automático
+          // Solo mostrar horarios vacíos y continuar normalmente
+          setHorarios([]);
+        } else if (status === 404) {
+          console.log('📭 No se encontraron horarios para este usuario');
+          setHorarios([]);
+        } else {
+          console.error('❌ Error inesperado al cargar horarios:', error.response?.data);
+          setHorarios([]);
+        }
+      } else {
+        // Para otros errores, mostrar horarios vacíos
+        console.warn('⚠️ Error no relacionado con permisos, mostrando horarios vacíos');
+        setHorarios([]);
+      }
     } finally {
       setLoading(false);
     }
@@ -137,11 +164,11 @@ export default function MiHorarioPage() {
   const asignarColores = (horarios: HorarioPlano[]) => {
     const materias = new Map<number, string>();
     const materiasUnicas = [...new Set(horarios.map(h => h.materia.id))];
-    
+
     materiasUnicas.forEach((materiaId, index) => {
       materias.set(materiaId, COLORES_MATERIAS[index % COLORES_MATERIAS.length]);
     });
-    
+
     setMateriasColores(materias);
   };
 
@@ -274,13 +301,17 @@ export default function MiHorarioPage() {
                   <CardContent className="text-center py-8">
                     <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-3" />
                     <p className="text-gray-600">No tienes clases este día</p>
+                    {horarios.length === 0 && (
+                      <p className="text-sm text-gray-500 mt-2">
+                        No tienes horarios registrados. Inscríbete a materias para ver tus horarios.
+                      </p>
+                    )}
                   </CardContent>
                 </Card>
               )}
             </div>
           </div>
-        ) : (
-          /* Vista Desktop - Grilla */
+        ) : (/* Vista Desktop - Grilla */
           <div className="bg-white rounded-lg shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -310,7 +341,7 @@ export default function MiHorarioPage() {
                         if (horario) {
                           const horaInicio = parseInt(horario.horaInicio.split(':')[0]);
                           const horaActual = parseInt(hora.split(':')[0]);
-                          
+
                           // Solo mostrar en la primera hora de la clase
                           if (horaInicio === horaActual) {
                             const duracion = parseInt(horario.horaFin.split(':')[0]) - horaInicio;

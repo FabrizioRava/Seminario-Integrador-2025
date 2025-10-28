@@ -1,9 +1,9 @@
-import { Clock, Calendar, Users, Check, X, AlertCircle } from 'lucide-react';
+import { Clock, Calendar, Users, Check, AlertCircle } from 'lucide-react';
 import { format, parseISO, isToday, isPast, isFuture } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 
 export interface ClaseCardProps {
   id: number;

@@ -1,10 +1,10 @@
 // src/inscripcion-examen/inscripcion-examen.service.ts
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { InscripcionExamen } from './entities/inscripcion-examen.entity';
 import { Inscripcion } from '../inscripcion/entities/inscripcion.entity';
-import { ExamenFinal } from '../examen/entities/examen.entity';
-import { CorrelativasService } from '../correlativas/correlativas.service'; // ✅ Importar el nuevo servicio
+import { ExamenFinal } from '../examen-final/entities/examen-final.entity';
+import { CorrelativasService } from '../correlativas/correlativas.service';
 import { CreateInscripcionExamenDto } from './dto/create-inscripcion-examen.dto';
 import { UpdateInscripcionExamenDto } from './dto/update-inscripcion-examen.dto';
 
@@ -12,15 +12,15 @@ import { UpdateInscripcionExamenDto } from './dto/update-inscripcion-examen.dto'
 export class InscripcionExamenService {
   constructor(
     @InjectRepository(InscripcionExamen)
-    private inscripcionExamenRepo, // ✅ Sin tipo explícito
+    private inscripcionExamenRepo,
     
     @InjectRepository(Inscripcion)
-    private inscripcionRepo, // ✅ Sin tipo explícito
+    private inscripcionRepo,
     
     @InjectRepository(ExamenFinal)
-    private examenRepo, // ✅ Sin tipo explícito
+    private examenFinalRepo,
     
-    private correlativasService: CorrelativasService, // ✅ Inyectar el nuevo servicio
+    private correlativasService: CorrelativasService,
   ) {}
 
   async inscribirse(dto: CreateInscripcionExamenDto): Promise<InscripcionExamen> {
@@ -34,19 +34,24 @@ export class InscripcionExamenService {
       throw new NotFoundException('Inscripción no encontrada');
     }
 
-    // Verificar que el examen exista
-    const examen = await this.examenRepo.findOne({ 
+    // Verificar que el examen final exista (nuevo modelo)
+    const examen = await this.examenFinalRepo.findOne({ 
       where: { id: dto.examenId },
-      relations: ['materia', 'estudiante']
+      relations: ['materia']
     });
     
     if (!examen) {
       throw new NotFoundException('Examen final no encontrado');
     }
 
-    // Verificar que el estudiante sea el mismo
-    if (examen.estudiante.id !== inscripcion.estudiante.id) {
-      throw new BadRequestException('No puedes inscribirte a un examen de otro estudiante');
+    // Verificar que corresponda a la misma materia de la inscripción
+    if (!inscripcion.materia || !examen.materia || inscripcion.materia.id !== examen.materia.id) {
+      throw new BadRequestException('La inscripción no corresponde a la materia del examen');
+    }
+
+    // Verificar cupo disponible
+    if ((examen.inscriptos || 0) >= (examen.cupo || 0)) {
+      throw new BadRequestException('No hay cupos disponibles para este examen');
     }
 
     // ✅ Verificación mejorada con el nuevo servicio
@@ -56,7 +61,8 @@ export class InscripcionExamenService {
     );
 
     if (!verificacion.cumple) {
-      throw new BadRequestException(verificacion.mensaje);
+      const materias = verificacion.faltantes?.map(f => f.nombre).join(', ') || 'correlativas pendientes';
+      throw new BadRequestException(`No cumple correlativas para examen final: ${materias}`);
     }
 
     // Verificar que la inscripción sea válida para examen final
@@ -64,9 +70,9 @@ export class InscripcionExamenService {
       throw new BadRequestException('No puedes inscribirte a examen final si no has cursado la materia');
     }
 
-    // Verificar si ya está inscripto
+    // Verificar si ya está inscripto en ese examen
     const yaInscripto = await this.inscripcionExamenRepo.findOne({
-      where: { inscripcion: { id: dto.inscripcionId }, examen: { id: dto.examenId } }
+      where: { inscripcion: { id: dto.inscripcionId }, examenFinal: { id: dto.examenId } }
     });
 
     if (yaInscripto) {
@@ -76,12 +82,17 @@ export class InscripcionExamenService {
     // Crear inscripción
     const inscripcionExamen = this.inscripcionExamenRepo.create({
       inscripcion,
-      examen,
+      examenFinal: examen,
       estado: dto.estado || 'inscripto',
       nota: dto.nota
     });
 
-    return this.inscripcionExamenRepo.save(inscripcionExamen);
+    const saved = await this.inscripcionExamenRepo.save(inscripcionExamen);
+
+    // Actualizar contador de inscriptos del examen
+    await this.examenFinalRepo.update(examen.id, { inscriptos: (examen.inscriptos || 0) + 1 });
+
+    return saved;
   }
 
   async obtenerInscripcionesPorEstudiante(estudianteId: number): Promise<InscripcionExamen[]> {
@@ -89,25 +100,25 @@ export class InscripcionExamenService {
       where: { 
         inscripcion: { estudiante: { id: estudianteId } } 
       },
-      relations: ['examen', 'inscripcion'],
-      order: { examen: { id: 'DESC' } }
+      relations: ['examenFinal', 'inscripcion', 'examenFinal.materia', 'examenFinal.docente'],
+      order: { examenFinal: { id: 'DESC' } }
     });
   }
 
   async obtenerInscripcionesPorMateria(materiaId: number): Promise<InscripcionExamen[]> {
     return this.inscripcionExamenRepo.find({
       where: { 
-        examen: { materia: { id: materiaId } } 
+        examenFinal: { materia: { id: materiaId } } 
       },
-      relations: ['examen', 'inscripcion'],
-      order: { examen: { id: 'DESC' } }
+      relations: ['examenFinal', 'inscripcion'],
+      order: { examenFinal: { id: 'DESC' } }
     });
   }
 
   async obtenerInscripcionesPorExamen(examenId: number): Promise<InscripcionExamen[]> {
     return this.inscripcionExamenRepo.find({
-      where: { examen: { id: examenId } },
-      relations: ['inscripcion', 'examen'],
+      where: { examenFinal: { id: examenId } },
+      relations: ['inscripcion', 'examenFinal'],
       order: { inscripcion: { id: 'ASC' } }
     });
   }
@@ -115,7 +126,7 @@ export class InscripcionExamenService {
   async actualizarEstado(inscripcionExamenId: number, dto: UpdateInscripcionExamenDto): Promise<InscripcionExamen> {
     const inscripcionExamen = await this.inscripcionExamenRepo.findOne({ 
       where: { id: inscripcionExamenId },
-      relations: ['examen']
+      relations: ['examenFinal']
     });
     
     if (!inscripcionExamen) {
@@ -128,7 +139,8 @@ export class InscripcionExamenService {
 
   async removerInscripcion(inscripcionExamenId: number): Promise<void> {
     const inscripcionExamen = await this.inscripcionExamenRepo.findOne({ 
-      where: { id: inscripcionExamenId }
+      where: { id: inscripcionExamenId },
+      relations: ['examenFinal']
     });
     
     if (!inscripcionExamen) {
@@ -136,5 +148,34 @@ export class InscripcionExamenService {
     }
 
     await this.inscripcionExamenRepo.delete(inscripcionExamenId);
+
+    // Ajustar contador del examen si corresponde
+    if (inscripcionExamen.examenFinal) {
+      const examen = inscripcionExamen.examenFinal;
+      await this.examenFinalRepo.update(examen.id, { inscriptos: Math.max(0, (examen.inscriptos || 1) - 1) });
+    }
+  }
+
+  // Permitir que el estudiante cancele su propia inscripción
+  async removerInscripcionDeEstudiante(inscripcionExamenId: number, estudianteId: number): Promise<void> {
+    const inscripcionExamen = await this.inscripcionExamenRepo.findOne({
+      where: { id: inscripcionExamenId },
+      relations: ['inscripcion', 'inscripcion.estudiante', 'examenFinal']
+    });
+
+    if (!inscripcionExamen) {
+      throw new NotFoundException('Inscripción a examen no encontrada');
+    }
+
+    if (inscripcionExamen.inscripcion?.estudiante?.id !== estudianteId) {
+      throw new ForbiddenException('No puede cancelar una inscripción que no es suya');
+    }
+
+    await this.inscripcionExamenRepo.delete(inscripcionExamenId);
+
+    if (inscripcionExamen.examenFinal) {
+      const examen = inscripcionExamen.examenFinal;
+      await this.examenFinalRepo.update(examen.id, { inscriptos: Math.max(0, (examen.inscriptos || 1) - 1) });
+    }
   }
 }

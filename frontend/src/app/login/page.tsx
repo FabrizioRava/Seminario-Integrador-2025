@@ -4,16 +4,21 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import { isAxiosError } from 'axios';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle, Loader2 } from 'lucide-react';
 
 type FormData = {
-  identifier: string;
+  email: string;
   password: string;
 };
 
 export default function LoginPage() {
   const [formData, setFormData] = useState<FormData>({
-    identifier: '',
+    email: '',
     password: '',
   });
   const [error, setError] = useState('');
@@ -33,130 +38,91 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
     setLoading(true);
-    
+
     try {
-      const { identifier, password } = formData;
-      const trimmedIdentifier = identifier.trim();
-      
-      if (!trimmedIdentifier || !password) {
-        throw new Error('Por favor ingresa tu correo/legajo y contraseña');
-      }
-      
-      console.log('Intentando iniciar sesión con:', { identifier: trimmedIdentifier });
-      
-      const user = await login(trimmedIdentifier, password);
-      const redirectPath = getHomePathByRole(user.rol);
-      console.log('Redirigiendo a:', redirectPath);
-      
-      // Usar window.location para forzar recarga completa
-      window.location.href = redirectPath;
-    } catch (err: any) {
-      console.error('Error al iniciar sesión:', err);
-      
-      // Manejar diferentes tipos de errores
-      let errorMessage = 'Error al iniciar sesión';
-      
-      if (err.message) {
-        if (err.message.includes('401') || err.message.includes('credenciales')) {
-          errorMessage = 'Credenciales incorrectas. Por favor, verifica tu correo/legajo y contraseña.';
-        } else if (err.message.includes('NetworkError') || err.message.includes('conexión')) {
-          errorMessage = 'No se pudo conectar al servidor. Verifica tu conexión a internet.';
-        } else {
-          errorMessage = err.message;
-        }
-      }
-      
-      setError(errorMessage);
+      const loggedUser = await login(formData.email, formData.password);
+      router.push(getHomePathByRole(loggedUser.rol));
+    } catch (error: unknown) {
+      const message = isAxiosError<{ message?: string }>(error)
+        ? error.response?.data?.message
+        : error instanceof Error
+          ? error.message
+          : null;
+      setError(message ?? 'Error al iniciar sesión');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Iniciar sesión
-          </h2>
-        </div>
-        
-        {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-            <span className="block sm:inline">{error}</span>
-          </div>
-        )}
-        
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="rounded-md shadow-sm -space-y-px">
-            <div>
-              <label htmlFor="identifier" className="sr-only">
-                Correo electrónico o legajo
-              </label>
-              <input
-                id="identifier"
-                name="identifier"
-                type="text"
-                required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Correo electrónico o legajo"
-                value={formData.identifier}
+    <div className="min-h-screen flex items-center justify-center p-4 bg-cover bg-center bg-no-repeat" style={{backgroundImage: "url('/login-background.jpg')"}}>
+      <Card className="w-full max-w-md backdrop-blur-sm bg-white/95 shadow-2xl">
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl font-bold text-center">
+            Sistema de Autogestión
+          </CardTitle>
+          <CardDescription className="text-center">
+            Ingresa tus credenciales para acceder
+          </CardDescription>
+        </CardHeader>
+        <form onSubmit={handleSubmit}>
+          <CardContent className="space-y-4">
+            {error && (
+              <div className="flex items-center gap-2 p-3 text-sm text-red-600 bg-red-50 rounded-md">
+                <AlertCircle className="h-4 w-4" />
+                <span>{error}</span>
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="tu@email.com"
+                value={formData.email}
                 onChange={handleChange}
+                required
                 disabled={loading}
               />
             </div>
-            <div>
-              <label htmlFor="password" className="sr-only">
-                Contraseña
-              </label>
-              <input
+            <div className="space-y-2">
+              <Label htmlFor="password">Contraseña</Label>
+              <Input
                 id="password"
                 name="password"
                 type="password"
-                autoComplete="current-password"
-                required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Contraseña"
                 value={formData.password}
                 onChange={handleChange}
+                required
                 disabled={loading}
               />
             </div>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="text-sm">
-              <a href="#" className="font-medium text-blue-600 hover:text-blue-500">
-                ¿Olvidaste tu contraseña?
-              </a>
-            </div>
-          </div>
-
-          <div>
-            <button
+          </CardContent>
+          <CardFooter className="flex flex-col space-y-4">
+            <Button
               type="submit"
+              className="w-full"
               disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <>
-                  <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" />
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Iniciando sesión...
                 </>
-              ) : 'Iniciar sesión'}
-            </button>
-          </div>
-          
-          <div className="text-center text-sm">
-            <p className="text-gray-600">
+              ) : (
+                'Iniciar Sesión'
+              )}
+            </Button>
+            <div className="text-sm text-center text-gray-600">
               ¿No tienes una cuenta?{' '}
-              <Link href="/registro" className="font-medium text-blue-600 hover:text-blue-500">
-                Regístrate
+              <Link href="/registro" className="text-blue-600 hover:underline">
+                Regístrate aquí
               </Link>
-            </p>
-          </div>
+            </div>
+          </CardFooter>
         </form>
-      </div>
+      </Card>
     </div>
   );
 }

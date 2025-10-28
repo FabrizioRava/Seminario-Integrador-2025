@@ -5,7 +5,7 @@ import { Materia } from '../../materia/entities/materia.entity';
 import { User } from '../../user/entities/user.entity';
 import { Horario } from '../../horario/entities/horario.entity';
 import { Clase } from '../../clase/entities/clase.entity';
-import { Inscripcion } from '../../inscripcion/entities/inscripcion.entity'; // ✅ Importar Inscripcion
+import { Inscripcion } from '../../inscripcion/entities/inscripcion.entity';
 
 @Entity()
 export class Comision {
@@ -17,6 +17,9 @@ export class Comision {
 
   @Column({ nullable: true })
   descripcion: string;
+
+  @Column({ type: 'int', default: 30 })
+  cupoMaximo: number;
 
   // Relación con la materia principal
   @ManyToOne(() => Materia, materia => materia.comisiones)
@@ -30,7 +33,7 @@ export class Comision {
 
   // Relación con inscripciones (nueva relación)
   @OneToMany(() => Inscripcion, inscripcion => inscripcion.comision)
-  inscripciones: Inscripcion[]; // ✅ Añadida esta relación
+  inscripciones: Inscripcion[];
 
   // Relación con horarios
   @OneToMany(() => Horario, horario => horario.comision)

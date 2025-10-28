@@ -1,4 +1,4 @@
-import api from '@/lib/api';
+import api, { setAuthToken } from '@/lib/api';
 
 export interface LoginDto {
   email: string;
@@ -36,6 +36,7 @@ class AuthService {
     if (response.data.access_token) {
       localStorage.setItem('token', response.data.access_token);
       localStorage.setItem('user', JSON.stringify(response.data.user));
+      setAuthToken(response.data.access_token);
     }
     return response.data;
   }

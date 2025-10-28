@@ -109,7 +109,7 @@ export class AsistenciaService {
     return this.asistenciaRepo.find({
       where: { estudiante: { id: estudianteId } },
       relations: ['clase', 'clase.materia'],
-      order: { 'clase.fecha': 'DESC' },
+      order: { clase: { fecha: 'DESC' } },
     });
   }
 

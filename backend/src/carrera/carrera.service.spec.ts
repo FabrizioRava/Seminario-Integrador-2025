@@ -63,20 +63,20 @@ describe('CarreraService', () => {
 
   it('debe encontrar todas las carreras', async () => {
     const carreras = [
-      { id: 1, nombre: 'Ingeniería en Sistemas', descripcion: 'Carrera de sistemas de información', materias: [] },
-      { id: 2, nombre: 'Licenciatura en Administración', descripcion: 'Carrera de administración de empresas', materias: [] },
+      { id: 1, nombre: 'Ingeniería en Sistemas', descripcion: 'Carrera de sistemas de información', planesEstudio: [] },
+      { id: 2, nombre: 'Licenciatura en Administración', descripcion: 'Carrera de administración de empresas', planesEstudio: [] },
     ];
 
     mockCarreraRepository.find.mockResolvedValue(carreras);
     
     const result = await service.findAll();
 
-    expect(mockCarreraRepository.find).toHaveBeenCalledWith({ relations: ['materias'] });
+    expect(mockCarreraRepository.find).toHaveBeenCalledWith({ relations: ['planesEstudio'] });
     expect(result).toEqual(carreras);
   });
 
   it('debe retornar una carrera por su id', async () => {
-    const carreraEntity = { id: 1, nombre: 'Ingeniería en Sistemas', materias: [] };
+    const carreraEntity = { id: 1, nombre: 'Ingeniería en Sistemas', planesEstudio: [] };
 
     mockCarreraRepository.findOne.mockResolvedValue(carreraEntity);
 
@@ -84,7 +84,7 @@ describe('CarreraService', () => {
 
     expect(mockCarreraRepository.findOne).toHaveBeenCalledWith({
       where: { id: 1 },
-      relations: ['materias'],
+      relations: ['planesEstudio'],
     });
     expect(result).toEqual(carreraEntity);
   });
@@ -98,7 +98,7 @@ describe('CarreraService', () => {
 
     expect(mockCarreraRepository.findOne).toHaveBeenCalledWith({
       where: { id: 999 },
-      relations: ['materias'],
+      relations: ['planesEstudio'],
     });
   });
 

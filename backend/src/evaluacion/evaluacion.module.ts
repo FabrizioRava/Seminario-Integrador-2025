@@ -7,9 +7,11 @@ import { EvaluacionService } from './evaluacion.service';
 import { Inscripcion } from '../inscripcion/entities/inscripcion.entity';
 import { Materia } from '../materia/entities/materia.entity';
 import { User } from '../user/entities/user.entity';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
   imports: [
+    AuthModule, // ✅ Necesario para JwtAuthGuard
     TypeOrmModule.forFeature([Evaluacion, Inscripcion, Materia, User]),
   ],
   controllers: [EvaluacionController],

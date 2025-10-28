@@ -215,13 +215,26 @@ export class ExamenFinalService {
   }
 
   private mapToResponseDto(examen: ExamenFinal): ExamenFinalResponseDto {
+    const fechaStr = typeof (examen as any).fecha === 'string'
+      ? (examen as any).fecha
+      : (examen as any).fecha?.toISOString()?.split('T')[0];
+
     const response = plainToClass(ExamenFinalResponseDto, {
-      ...examen,
-      fecha: examen.fecha.toISOString().split('T')[0], // Formato YYYY-MM-DD
-      materia: examen.materia?.nombre,
-      materiaId: examen.materia?.id,
-      docente: examen.docente ? `${examen.docente.nombre} ${examen.docente.apellido}` : null,
-      docenteId: examen.docente?.id,
+      id: examen.id,
+      materia: examen.materia ? { id: examen.materia.id, nombre: examen.materia.nombre } : undefined,
+      docente: examen.docente ? { id: examen.docente.id, nombre: examen.docente.nombre, apellido: examen.docente.apellido } : undefined,
+      fecha: fechaStr,
+      horaInicioTeorico: examen.horaInicioTeorico,
+      horaFinTeorico: examen.horaFinTeorico,
+      aulaTeorico: examen.aulaTeorico,
+      horaInicioPractico: examen.horaInicioPractico,
+      horaFinPractico: examen.horaFinPractico,
+      aulaPractico: examen.aulaPractico,
+      cupo: examen.cupo,
+      inscriptos: examen.inscriptos,
+      disponibles: Math.max(0, (examen.cupo || 0) - (examen.inscriptos || 0)),
+      createdAt: (examen as any).createdAt,
+      updatedAt: (examen as any).updatedAt,
     });
 
     return response;

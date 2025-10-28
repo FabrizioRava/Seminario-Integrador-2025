@@ -29,7 +29,7 @@ export class AsistenciaController {
       +estudianteId,
       dto.estado,
       dto.motivoJustificacion,
-      req.user.userId,
+      req.user.id,
       req.user.rol,
     );
   }
@@ -44,7 +44,7 @@ export class AsistenciaController {
   @UseGuards(JwtAuthGuard)
   @Get('mis-asistencias')
   async obtenerAsistenciasPorEstudiante(@Request() req) {
-    return this.asistenciaService.obtenerAsistenciasPorEstudiante(req.user.userId);
+    return this.asistenciaService.obtenerAsistenciasPorEstudiante(req.user.id);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -54,7 +54,7 @@ export class AsistenciaController {
     @Query('materiaId') materiaId?: string,
   ): Promise<ResumenAsistencias> {
     return this.asistenciaService.obtenerResumenAsistencias(
-      req.user.userId,
+      req.user.id,
       materiaId ? +materiaId : undefined,
     );
   }
@@ -66,7 +66,7 @@ export class AsistenciaController {
     @Param('materiaId') materiaId: string,
   ): Promise<ResumenAsistencias> {
     return this.asistenciaService.obtenerResumenAsistencias(
-      req.user.userId,
+      req.user.id,
       +materiaId,
     );
   }

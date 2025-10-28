@@ -15,10 +15,7 @@ describe('InscripcionController', () => {
       historialAcademico: jest.fn(),
       materiasDelEstudiante: jest.fn(),
       inscribirse: jest.fn(),
-      cargarFaltas: jest.fn(),
-      cargarNota: jest.fn(),
       detalleMateria: jest.fn(),
-      obtenerCursadasMateria: jest.fn()
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -39,6 +36,25 @@ describe('InscripcionController', () => {
   });
 
   // Tests específicos para verificar funcionalidad
+  describe('materiasDisponibles', () => {
+    it('should return available materias for the authenticated student', async () => {
+      const req = { user: { userId: 10 } };
+      (mockInscripcionService as any).materiasDisponibles = jest.fn().mockResolvedValue([{ id: 1 }]);
+      const res = await (controller as any).materiasDisponibles(req);
+      expect(res).toEqual([{ id: 1 }]);
+      expect((mockInscripcionService as any).materiasDisponibles).toHaveBeenCalledWith(10);
+    });
+  });
+
+  describe('detalleMateria', () => {
+    it('should return detail for own inscription', async () => {
+      (mockInscripcionService.detalleMateria as jest.Mock).mockResolvedValue({ id: 5 });
+      const res = await (controller as any).detalleMateria('5', { user: { userId: 99 } });
+      expect(res).toEqual({ id: 5 });
+      expect(mockInscripcionService.detalleMateria).toHaveBeenCalledWith(5, 99);
+    });
+  });
+
   describe('inscribirse', () => {
     it('should enroll student in subject', async () => {
       // Arrange

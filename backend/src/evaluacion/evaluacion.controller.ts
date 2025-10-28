@@ -26,7 +26,7 @@ export class EvaluacionController {
   @Roles(UserRole.PROFESOR)
   @Post()
   async crear(@Body() dto: CrearEvaluacionDto, @Request() req) {
-    const cargadoPorId = req.user.userId;
+    const cargadoPorId = req.user.id;
     return this.evaluacionService.crearEvaluacion(
       dto.materiaId,
       dto.estudianteId,
@@ -51,7 +51,7 @@ export class EvaluacionController {
   @Roles(UserRole.ESTUDIANTE)
   @Get('mi-materia/:materiaId')
   async porEstudianteYMateria(@Param('materiaId') materiaId: string, @Request() req) {
-    const estudianteId = req.user.userId;
+    const estudianteId = req.user.id;
     return this.evaluacionService.getEvaluacionesPorEstudiante(estudianteId, +materiaId);
   }
 }

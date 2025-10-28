@@ -11,6 +11,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 @ApiTags('Materias')
 @Controller('materia')
 @UsePipes(new ValidationPipe({ whitelist: true }))
+// Controlador para operaciones relacionadas con materias
 export class MateriaController {
   constructor(private readonly materiaService: MateriaService) {}
 
@@ -44,7 +45,7 @@ export class MateriaController {
   @ApiQuery({ name: 'nivel', required: false, type: Number })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
-  @ApiResponse({ status: 200, description: 'Materias encontradas', type: PaginatedResponseDto })
+  @ApiResponse({ status: 200, description: 'Materias filtradas', type: PaginatedResponseDto })
   search(
     @Query('nombre') nombre?: string,
     @Query('departamentoId') departamentoId?: number,
@@ -67,13 +68,13 @@ export class MateriaController {
     );
   }
 
-  @Get('del-plan/:planEstudioId')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Obtener todas las materias de un plan de estudio' })
   @ApiParam({ name: 'planEstudioId', type: Number })
   @ApiResponse({ status: 200, description: 'Materias del plan', type: [MateriaResponseDto] })
   @ApiResponse({ status: 400, description: 'ID de plan inválido', type: ApiErrorResponseDto })
   @ApiResponse({ status: 403, description: 'No autorizado para acceder a este plan', type: ApiErrorResponseDto })
+  @Get('del-plan/:planEstudioId')
   async getMateriasPorPlan(
     @Param('planEstudioId') planEstudioId: string,
     @Req() req: any

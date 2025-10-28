@@ -5,7 +5,7 @@ import { InscripcionExamenService } from './inscripcion-examen.service';
 import { TestDatabaseModule } from '../test-utils/test-database.module';
 import { InscripcionExamen } from './entities/inscripcion-examen.entity';
 import { Inscripcion } from '../inscripcion/entities/inscripcion.entity';
-import { ExamenFinal } from '../examen/entities/examen.entity';
+import { ExamenFinal } from '../examen-final/entities/examen-final.entity';
 import { CorrelativasService } from '../correlativas/correlativas.service';
 import { CreateInscripcionExamenDto } from './dto/create-inscripcion-examen.dto';
 import { UpdateInscripcionExamenDto } from './dto/update-inscripcion-examen.dto';
@@ -70,28 +70,30 @@ describe('InscripcionExamenService', () => {
 
       const examen = {
         id: 1,
-        estudiante: { id: 1 },
-        materia: { id: 1 }
-      };
+        materia: { id: 1 },
+        cupo: 30,
+        inscriptos: 0,
+      } as any;
 
       const savedInscripcionExamen = {
         id: 1,
         inscripcion,
-        examen,
+        examenFinal: examen,
         estado: 'inscripto',
         nota: 8
-      };
+      } as any;
 
       // Mock de los repositorios
       jest.spyOn(mockInscripcionRepo, 'findOne').mockResolvedValue(inscripcion as any);
       jest.spyOn(mockExamenRepo, 'findOne').mockResolvedValue(examen as any);
-      jest.spyOn(mockCorrelativasService, 'verificarInscripcionExamenFinal').mockResolvedValue({ 
+jest.spyOn(mockCorrelativasService, 'verificarInscripcionExamenFinal').mockResolvedValue({ 
         cumple: true, 
-        mensaje: 'Correlativas verificadas correctamente' 
+        faltantes: []
       });
       jest.spyOn(mockInscripcionExamenRepo, 'findOne').mockResolvedValue(null); // No inscrito previamente
       jest.spyOn(mockInscripcionExamenRepo, 'create').mockImplementation((data) => data);
       jest.spyOn(mockInscripcionExamenRepo, 'save').mockResolvedValue(savedInscripcionExamen as any);
+      jest.spyOn(mockExamenRepo, 'update').mockResolvedValue({} as any);
 
       // Act
       const result = await service.inscribirse(dto);
@@ -104,11 +106,11 @@ describe('InscripcionExamenService', () => {
       });
       expect(mockExamenRepo.findOne).toHaveBeenCalledWith({
         where: { id: 1 },
-        relations: ['materia', 'estudiante']
+        relations: ['materia']
       });
       expect(mockCorrelativasService.verificarInscripcionExamenFinal).toHaveBeenCalledWith(1, 1);
       expect(mockInscripcionExamenRepo.findOne).toHaveBeenCalledWith({
-        where: { inscripcion: { id: 1 }, examen: { id: 1 } }
+        where: { inscripcion: { id: 1 }, examenFinal: { id: 1 } }
       });
       expect(mockInscripcionExamenRepo.save).toHaveBeenCalled();
     });
@@ -148,6 +150,7 @@ describe('InscripcionExamenService', () => {
       // Mock de los repositorios
       jest.spyOn(mockInscripcionRepo, 'findOne').mockResolvedValue(inscripcion as any);
       jest.spyOn(mockExamenRepo, 'findOne').mockResolvedValue(null);
+      jest.spyOn(mockExamenRepo, 'update').mockResolvedValue({} as any);
 
       // Act & Assert
       await expect(service.inscribirse(dto)).rejects.toThrow('Examen final no encontrado');
@@ -157,11 +160,11 @@ describe('InscripcionExamenService', () => {
       });
       expect(mockExamenRepo.findOne).toHaveBeenCalledWith({
         where: { id: 1 },
-        relations: ['materia', 'estudiante']
+        relations: ['materia']
       });
     });
 
-    it('should throw BadRequestException when student mismatch', async () => {
+    it('should throw BadRequestException when subject mismatches between inscripcion and examen', async () => {
       // Arrange
       const dto: CreateInscripcionExamenDto = {
         inscripcionId: 1,
@@ -177,23 +180,24 @@ describe('InscripcionExamenService', () => {
 
       const examen = {
         id: 1,
-        estudiante: { id: 2 }, // Diferente estudiante
-        materia: { id: 1 }
-      };
+        materia: { id: 2 }, // materia distinta
+        cupo: 30,
+        inscriptos: 0,
+      } as any;
 
       // Mock de los repositorios
       jest.spyOn(mockInscripcionRepo, 'findOne').mockResolvedValue(inscripcion as any);
       jest.spyOn(mockExamenRepo, 'findOne').mockResolvedValue(examen as any);
 
       // Act & Assert
-      await expect(service.inscribirse(dto)).rejects.toThrow('No puedes inscribirte a un examen de otro estudiante');
+      await expect(service.inscribirse(dto)).rejects.toThrow('La inscripción no corresponde a la materia del examen');
       expect(mockInscripcionRepo.findOne).toHaveBeenCalledWith({
         where: { id: 1 },
         relations: ['materia', 'estudiante']
       });
       expect(mockExamenRepo.findOne).toHaveBeenCalledWith({
         where: { id: 1 },
-        relations: ['materia', 'estudiante']
+        relations: ['materia']
       });
     });
 
@@ -213,27 +217,28 @@ describe('InscripcionExamenService', () => {
 
       const examen = {
         id: 1,
-        estudiante: { id: 1 },
-        materia: { id: 1 }
-      };
+        materia: { id: 1 },
+        cupo: 30,
+        inscriptos: 0,
+      } as any;
 
       // Mock de los repositorios
       jest.spyOn(mockInscripcionRepo, 'findOne').mockResolvedValue(inscripcion as any);
       jest.spyOn(mockExamenRepo, 'findOne').mockResolvedValue(examen as any);
-      jest.spyOn(mockCorrelativasService, 'verificarInscripcionExamenFinal').mockResolvedValue({ 
+jest.spyOn(mockCorrelativasService, 'verificarInscripcionExamenFinal').mockResolvedValue({ 
         cumple: false, 
-        mensaje: 'No puedes inscribirte al examen final. Faltan correlativas: Matemática' 
+        faltantes: [{ id: 1, nombre: 'Matemática' }]
       });
 
       // Act & Assert
-      await expect(service.inscribirse(dto)).rejects.toThrow('No puedes inscribirte al examen final. Faltan correlativas: Matemática');
+await expect(service.inscribirse(dto)).rejects.toThrow('No cumple correlativas para examen final: Matemática');
       expect(mockInscripcionRepo.findOne).toHaveBeenCalledWith({
         where: { id: 1 },
         relations: ['materia', 'estudiante']
       });
       expect(mockExamenRepo.findOne).toHaveBeenCalledWith({
         where: { id: 1 },
-        relations: ['materia', 'estudiante']
+        relations: ['materia']
       });
       expect(mockCorrelativasService.verificarInscripcionExamenFinal).toHaveBeenCalledWith(1, 1);
     });
@@ -254,16 +259,17 @@ describe('InscripcionExamenService', () => {
 
       const examen = {
         id: 1,
-        estudiante: { id: 1 },
-        materia: { id: 1 }
-      };
+        materia: { id: 1 },
+        cupo: 30,
+        inscriptos: 0,
+      } as any;
 
       // Mock de los repositorios
       jest.spyOn(mockInscripcionRepo, 'findOne').mockResolvedValue(inscripcion as any);
       jest.spyOn(mockExamenRepo, 'findOne').mockResolvedValue(examen as any);
-      jest.spyOn(mockCorrelativasService, 'verificarInscripcionExamenFinal').mockResolvedValue({ 
+jest.spyOn(mockCorrelativasService, 'verificarInscripcionExamenFinal').mockResolvedValue({ 
         cumple: true, 
-        mensaje: 'Correlativas verificadas correctamente' 
+        faltantes: []
       });
 
       // Act & Assert
@@ -274,7 +280,7 @@ describe('InscripcionExamenService', () => {
       });
       expect(mockExamenRepo.findOne).toHaveBeenCalledWith({
         where: { id: 1 },
-        relations: ['materia', 'estudiante']
+        relations: ['materia']
       });
       expect(mockCorrelativasService.verificarInscripcionExamenFinal).toHaveBeenCalledWith(1, 1);
     });
@@ -295,22 +301,23 @@ describe('InscripcionExamenService', () => {
 
       const examen = {
         id: 1,
-        estudiante: { id: 1 },
-        materia: { id: 1 }
-      };
+        materia: { id: 1 },
+        cupo: 30,
+        inscriptos: 0,
+      } as any;
 
       const yaInscripto = {
         id: 1,
         inscripcion,
-        examen
-      };
+        examenFinal: examen
+      } as any;
 
       // Mock de los repositorios
       jest.spyOn(mockInscripcionRepo, 'findOne').mockResolvedValue(inscripcion as any);
       jest.spyOn(mockExamenRepo, 'findOne').mockResolvedValue(examen as any);
       jest.spyOn(mockCorrelativasService, 'verificarInscripcionExamenFinal').mockResolvedValue({ 
-        cumple: true, 
-        mensaje: 'Correlativas verificadas correctamente' 
+        cumple: true,
+        faltantes: []
       });
       jest.spyOn(mockInscripcionExamenRepo, 'findOne').mockResolvedValue(yaInscripto as any);
 
@@ -322,15 +329,29 @@ describe('InscripcionExamenService', () => {
       });
       expect(mockExamenRepo.findOne).toHaveBeenCalledWith({
         where: { id: 1 },
-        relations: ['materia', 'estudiante']
+        relations: ['materia']
       });
       expect(mockCorrelativasService.verificarInscripcionExamenFinal).toHaveBeenCalledWith(1, 1);
       expect(mockInscripcionExamenRepo.findOne).toHaveBeenCalledWith({
-        where: { inscripcion: { id: 1 }, examen: { id: 1 } }
+        where: { inscripcion: { id: 1 }, examenFinal: { id: 1 } }
       });
     });
-  });
 
+    it('should default estado to "inscripto" when not provided', async () => {
+      const dto: CreateInscripcionExamenDto = { inscripcionId: 1, examenId: 2 } as any;
+      const inscripcion = { id: 1, estudiante: { id: 1 }, materia: { id: 1 }, stc: 'cursada' };
+      const examen = { id: 2, materia: { id: 1 }, cupo: 30, inscriptos: 0 } as any;
+      jest.spyOn(mockInscripcionRepo, 'findOne').mockResolvedValue(inscripcion as any);
+      jest.spyOn(mockExamenRepo, 'findOne').mockResolvedValue(examen as any);
+      jest.spyOn(mockCorrelativasService, 'verificarInscripcionExamenFinal').mockResolvedValue({ cumple: true, faltantes: [] } as any);
+      jest.spyOn(mockInscripcionExamenRepo, 'findOne').mockResolvedValue(null);
+      jest.spyOn(mockInscripcionExamenRepo, 'create').mockImplementation((d) => d);
+      jest.spyOn(mockInscripcionExamenRepo, 'save').mockResolvedValue({ id: 99, estado: 'inscripto' } as any);
+      const res = await service.inscribirse(dto);
+      expect(res).toEqual({ id: 99, estado: 'inscripto' });
+    });
+
+  });
   describe('obtenerInscripcionesPorEstudiante', () => {
     it('should return student exam enrollments', async () => {
       // Arrange
@@ -340,7 +361,7 @@ describe('InscripcionExamenService', () => {
         {
           id: 1,
           inscripcion: { id: 1, estudiante: { id: estudianteId } },
-          examen: { id: 1, materia: { id: 1 } }
+          examenFinal: { id: 1, materia: { id: 1 } }
         }
       ];
 
@@ -356,8 +377,8 @@ describe('InscripcionExamenService', () => {
         where: { 
           inscripcion: { estudiante: { id: estudianteId } } 
         },
-        relations: ['examen', 'inscripcion'],
-        order: { examen: { id: 'DESC' } }
+        relations: ['examenFinal', 'inscripcion', 'examenFinal.materia', 'examenFinal.docente'],
+        order: { examenFinal: { id: 'DESC' } }
       });
     });
   });
@@ -371,7 +392,7 @@ describe('InscripcionExamenService', () => {
         {
           id: 1,
           inscripcion: { id: 1 },
-          examen: { id: 1, materia: { id: materiaId } }
+          examenFinal: { id: 1, materia: { id: materiaId } }
         }
       ];
 
@@ -385,10 +406,10 @@ describe('InscripcionExamenService', () => {
       expect(result).toEqual(inscripciones);
       expect(mockInscripcionExamenRepo.find).toHaveBeenCalledWith({
         where: { 
-          examen: { materia: { id: materiaId } } 
+          examenFinal: { materia: { id: materiaId } } 
         },
-        relations: ['examen', 'inscripcion'],
-        order: { examen: { id: 'DESC' } }
+        relations: ['examenFinal', 'inscripcion'],
+        order: { examenFinal: { id: 'DESC' } }
       });
     });
   });
@@ -402,7 +423,7 @@ describe('InscripcionExamenService', () => {
         {
           id: 1,
           inscripcion: { id: 1 },
-          examen: { id: examenId }
+          examenFinal: { id: examenId }
         }
       ];
 
@@ -415,8 +436,8 @@ describe('InscripcionExamenService', () => {
       // Assert
       expect(result).toEqual(inscripciones);
       expect(mockInscripcionExamenRepo.find).toHaveBeenCalledWith({
-        where: { examen: { id: examenId } },
-        relations: ['inscripcion', 'examen'],
+        where: { examenFinal: { id: examenId } },
+        relations: ['inscripcion', 'examenFinal'],
         order: { inscripcion: { id: 'ASC' } }
       });
     });
@@ -434,7 +455,7 @@ describe('InscripcionExamenService', () => {
       const inscripcionExamen = {
         id: inscripcionExamenId,
         inscripcion: { id: 1 },
-        examen: { id: 1 },
+        examenFinal: { id: 1 },
         estado: 'inscripto',
         nota: 8
       };
@@ -455,7 +476,7 @@ describe('InscripcionExamenService', () => {
       expect(result).toEqual(updatedInscripcionExamen);
       expect(mockInscripcionExamenRepo.findOne).toHaveBeenCalledWith({
         where: { id: inscripcionExamenId },
-        relations: ['examen']
+        relations: ['examenFinal']
       });
       expect(mockInscripcionExamenRepo.save).toHaveBeenCalledWith({
         ...inscripcionExamen,
@@ -477,7 +498,7 @@ describe('InscripcionExamenService', () => {
       await expect(service.actualizarEstado(inscripcionExamenId, dto)).rejects.toThrow('Inscripción a examen no encontrada');
       expect(mockInscripcionExamenRepo.findOne).toHaveBeenCalledWith({
         where: { id: inscripcionExamenId },
-        relations: ['examen']
+        relations: ['examenFinal']
       });
     });
   });
@@ -490,19 +511,21 @@ describe('InscripcionExamenService', () => {
       const inscripcionExamen = {
         id: inscripcionExamenId,
         inscripcion: { id: 1 },
-        examen: { id: 1 }
+        examenFinal: { id: 1 }
       };
 
       // Mock del repositorio
       jest.spyOn(mockInscripcionExamenRepo, 'findOne').mockResolvedValue(inscripcionExamen as any);
-      jest.spyOn(mockInscripcionExamenRepo, 'delete').mockResolvedValue(undefined);
+      jest.spyOn(mockInscripcionExamenRepo, 'delete').mockResolvedValue(undefined as any);
+      jest.spyOn(mockExamenRepo, 'update').mockResolvedValue({} as any);
 
       // Act
       await service.removerInscripcion(inscripcionExamenId);
 
       // Assert
       expect(mockInscripcionExamenRepo.findOne).toHaveBeenCalledWith({
-        where: { id: inscripcionExamenId }
+        where: { id: inscripcionExamenId },
+        relations: ['examenFinal']
       });
       expect(mockInscripcionExamenRepo.delete).toHaveBeenCalledWith(inscripcionExamenId);
     });
@@ -517,7 +540,8 @@ describe('InscripcionExamenService', () => {
       // Act & Assert
       await expect(service.removerInscripcion(inscripcionExamenId)).rejects.toThrow('Inscripción a examen no encontrada');
       expect(mockInscripcionExamenRepo.findOne).toHaveBeenCalledWith({
-        where: { id: inscripcionExamenId }
+        where: { id: inscripcionExamenId },
+        relations: ['examenFinal']
       });
     });
   });

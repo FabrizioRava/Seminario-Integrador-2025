@@ -6,7 +6,7 @@ import api from '@/lib/api';
 
 type UserRole = 'admin' | 'profesor' | 'estudiante' | 'secretaria_academica';
 
-// Función para obtener la ruta según el rol
+// Retorna la ruta de inicio según el rol del usuario
 export const getHomePathByRole = (role: UserRole = 'estudiante'): string => {
   switch (role) {
     case 'admin':
@@ -22,6 +22,7 @@ export const getHomePathByRole = (role: UserRole = 'estudiante'): string => {
   }
 };
 
+// Define la interfaz del contexto de autenticación
 export interface User {
   id: number;
   nombre: string;
@@ -29,7 +30,10 @@ export interface User {
   email: string;
   rol: UserRole;
   legajo?: string;
-  // Agrega otros campos según sea necesario
+  planEstudio?: {
+    id: number;
+    nombre: string;
+  };
 }
 
 interface AuthContextType {
@@ -44,6 +48,7 @@ interface AuthContextType {
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Proveedor del contexto de autenticación que maneja el estado global de autenticación
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
@@ -56,20 +61,40 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       try {
         const storedToken = localStorage.getItem('auth_token');
         const storedUser = localStorage.getItem('user');
-        
+
+
         if (storedToken && storedUser) {
-          // Parsear el usuario almacenado
-          const userData = JSON.parse(storedUser);
-          setUser(userData);
-          setToken(storedToken);
-          setIsAuthenticated(true);
-          api.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+          try {
+            const userData = JSON.parse(storedUser);
+
+            // Validar que los datos del usuario sean completos
+            if (userData && userData.nombre && userData.email && userData.rol) {
+              setUser(userData);
+              setToken(storedToken);
+              setIsAuthenticated(true);
+              api.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+            } else {
+              console.error('❌ AuthContext: Datos de usuario incompletos, limpiando localStorage');
+              localStorage.removeItem('auth_token');
+              localStorage.removeItem('user');
+            }
+          } catch (parseError) {
+            console.error('❌ AuthContext: Error al parsear datos del usuario:', parseError);
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('user');
+          }
+        } else {
+          if (storedToken || storedUser) {
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('user');
+          }
         }
       } catch (error) {
-        console.error('Error al cargar los datos de autenticación:', error);
+        console.error('Auth error loading data:', error);
         localStorage.removeItem('auth_token');
         localStorage.removeItem('user');
       } finally {
+        console.log('✅ AuthContext: Carga de autenticación completada');
         setLoading(false);
       }
     };
@@ -77,6 +102,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     loadAuthData();
   }, []);
 
+  // Función de inicio de sesión que autentica al usuario
   const login = useCallback(
     async (identifier: string, password: string): Promise<User> => {
       try {
@@ -90,13 +116,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         // Determinar si el identificador es un email o un legajo
         const isEmail = identifier.includes('@');
-        const loginData = isEmail 
+        const loginData = isEmail
           ? { email: identifier, password }
           : { legajo: identifier, password };
-        
+
         const loginUrl = `${apiUrl}/auth/login`;
         console.log('Intentando iniciar sesión en:', loginUrl);
-        
+
         const response = await fetch(loginUrl, {
           method: 'POST',
           headers: {
@@ -146,9 +172,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         
         return user;
         
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('Error en el inicio de sesión:', error);
-        throw error;
+        if (error instanceof Error) {
+          throw error;
+        }
+        throw new Error('Error desconocido en el inicio de sesión');
       } finally {
         setLoading(false);
       }
@@ -156,6 +185,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     [router]
   );
 
+  // Función de cierre de sesión que limpia el estado de autenticación
   const logout = useCallback(() => {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('user');
@@ -165,8 +195,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     delete api.defaults.headers.common['Authorization'];
     router.push('/login');
   }, [router]);
-
-  // Usar la función getHomePathByRole importada
 
   const value = {
     user,
@@ -185,6 +213,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
+// Hook personalizado para acceder al contexto de autenticación
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (context === undefined) {

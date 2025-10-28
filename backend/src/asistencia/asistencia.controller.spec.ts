@@ -54,7 +54,7 @@ describe('AsistenciaController', () => {
       
       (mockAsistenciaService.registrarAsistencia as jest.Mock).mockResolvedValue(expectedResult);
 
-      const req = { user: { userId: 5, rol: 'profesor' } };
+      const req = { user: { id: 5, rol: 'profesor' } };
 
       // Act
       const result = await controller.registrarAsistencia(claseId, estudianteId, dto, req as any);
@@ -93,7 +93,7 @@ describe('AsistenciaController', () => {
   describe('obtenerAsistenciasPorEstudiante', () => {
     it('should return attendance records for a student', async () => {
       // Arrange
-      const mockRequest = { user: { userId: 1 } };
+      const mockRequest = { user: { id: 1 } };
       const expectedResult = [{
         id: 1,
         claseId: 1,
@@ -116,7 +116,7 @@ describe('AsistenciaController', () => {
   describe('obtenerResumenAsistencias', () => {
     it('should return attendance summary', async () => {
       // Arrange
-      const mockRequest = { user: { userId: 1 } };
+      const mockRequest = { user: { id: 1 } };
       const expectedResult = {
         total: 10,
         presentes: 8,
@@ -133,12 +133,19 @@ describe('AsistenciaController', () => {
       expect(result).toEqual(expectedResult);
       expect(mockAsistenciaService.obtenerResumenAsistencias).toHaveBeenCalledWith(1, undefined);
     });
+
+    it('should parse materiaId when provided', async () => {
+      const mockRequest = { user: { id: 5 } };
+      (mockAsistenciaService.obtenerResumenAsistencias as jest.Mock).mockResolvedValue({ total: 0, presentes: 0, justificadas: 0, ausentes: 0 });
+      await controller.obtenerResumenAsistencias(mockRequest, '2');
+      expect(mockAsistenciaService.obtenerResumenAsistencias).toHaveBeenCalledWith(5, 2);
+    });
   });
 
   describe('obtenerAsistenciasPorMateria', () => {
     it('should return attendance records by subject', async () => {
       // Arrange
-      const mockRequest = { user: { userId: 1 } };
+      const mockRequest = { user: { id: 1 } };
       const materiaId = '1';
       const expectedResult = {
         total: 5,
