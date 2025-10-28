@@ -1,38 +1,49 @@
-# Sistema de Autogestión Universitaria 🎓
+# Sistema de Gestión Académica 🎓
 
-Sistema completo de gestión académica para universidades, desarrollado con tecnologías modernas y mejores prácticas.
+Sistema de gestión académica desarrollado para la materia de Seminario Integrador.
 
-## 🚀 Características Principales
+## 🚀 Funcionalidades Principales
 
-### Para Estudiantes
-- 📚 Inscripción a materias y comisiones
-- 📅 Visualización de horarios
-- 📊 Seguimiento de calificaciones
-- ✅ Control de asistencia
-- 📝 Inscripción a exámenes
-- 📈 Dashboard con estadísticas personales
+### Estudiantes
+- Inscripción a materias
+- Visualización de horarios
+- Control de asistencia
+- Inscripción a exámenes
 
-### Para Profesores
-- 👥 Gestión de comisiones
-- 📝 Registro de asistencia
-- 🎯 Carga de calificaciones
-- 📋 Gestión de clases
-- 📊 Reportes de rendimiento
+### Profesores
+- Gestión de comisiones
+- Registro de asistencia
+- Carga de calificaciones
 
-### Para Administradores
-- 🏫 Gestión de carreras y planes de estudio
-- 👤 Administración de usuarios
-- 📚 Gestión de materias y correlatividades
-- 📊 Reportes y estadísticas generales
-- 🔧 Configuración del sistema
+### Administradores
+- Gestión de carreras y materias
+- Administración de usuarios
+- Reportes generales
 
-## 🛠️ Stack Tecnológico
+## 🛠️ Tecnologías Utilizadas
 
 ### Backend
-- **NestJS** - Framework de Node.js
-- **TypeORM** - ORM para TypeScript
-- **PostgreSQL** - Base de datos
-- **JWT** - Autenticación
+- NestJS
+- TypeORM
+- PostgreSQL
+- JWT (Autenticación)
+
+### Frontend
+- React
+- TypeScript
+- Tailwind CSS
+
+## 🚀 Cómo Empezar
+
+1. Clonar el repositorio
+2. Configurar las variables de entorno
+3. Instalar dependencias: `npm install`
+4. Iniciar el servidor: `npm run start:dev`
+
+## 📝 Requisitos
+- Node.js 16+
+- PostgreSQL 12+
+- npm 8+
 - **Swagger** - Documentación de API
 - **Bcrypt** - Encriptación de contraseñas
 
@@ -233,11 +244,24 @@ npm run test:cov
 ### Frontend
 ```bash
 cd frontend
-# Pruebas
-npm run test
+# Instalar dependencias de desarrollo si no las tienes
+npm install --save-dev jest @testing-library/react @testing-library/jest-dom @testing-library/user-event
 
-# Cobertura
-npm run test:coverage
+# Ejecutar pruebas
+npx jest
+
+# Ejecutar pruebas con cobertura
+npx jest --coverage
+```
+
+Opcionalmente, puedes agregar estos scripts a tu `package.json` del frontend:
+
+```json
+"scripts": {
+  "test": "jest",
+  "test:watch": "jest --watch",
+  "test:coverage": "jest --coverage"
+}
 ```
 
 ## Seguridad
@@ -279,38 +303,6 @@ npm run test:coverage
 - Gráficos interactivos
 - Exportación de datos
 
-## 🤝 Contribuir
-
-1. Fork el proyecto
-2. Crear una rama (`git checkout -b feature/AmazingFeature`)
-3. Commit los cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abrir un Pull Request
-
 ## 📝 Licencia
 
 Este proyecto está bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) para más detalles.
-
-## 👥 Equipo
-
-- **Desarrollo Backend**: NestJS Team
-- **Desarrollo Frontend**: Next.js Team
-- **UI/UX Design**: Design Team
-- **Testing & QA**: QA Team
-
-## 📞 Soporte
-
-Para soporte, enviar un email a soporte@universidad.edu o abrir un issue en GitHub.
-
-## 🎯 Roadmap
-
-- [ ] Implementar notificaciones en tiempo real
-- [ ] Agregar módulo de mensajería
-- [ ] Integración con sistemas externos
-- [ ] App móvil con React Native
-- [ ] Sistema de videoconferencias
-- [ ] Módulo de biblioteca digital
-
----
-
-Desarrollado con ❤️ para la comunidad universitaria
