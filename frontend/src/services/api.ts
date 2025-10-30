@@ -1,4 +1,5 @@
-import axios, { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
+
+import axios, { AxiosError, AxiosHeaders, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 
 type AuthStorage = {
   token: string;
@@ -9,20 +10,21 @@ type AuthStorage = {
   };
 };
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000',
+  baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
+    'Accept': 'application/json',
   },
-  withCredentials: false,
-  timeout: 10000, // 10 segundos de timeout
+  withCredentials: true,
+  timeout: 10000, 
 });
 
-// Función para obtener el token de autenticación
 const getAuthToken = (): string | null => {
   if (typeof window === 'undefined') return null;
-  
-  // 1. Buscar en autogestion.auth
+
   const storedAuth = localStorage.getItem('autogestion.auth');
   if (storedAuth) {
     try {
@@ -34,23 +36,21 @@ const getAuthToken = (): string | null => {
     }
   }
 
-  // 2. Si no se encontró, buscar en la clave 'token' antigua
   const oldToken = localStorage.getItem('token');
   if (oldToken) {
     const userStr = localStorage.getItem('user');
     if (userStr) {
       try {
         const user = JSON.parse(userStr);
-        const authData: AuthStorage = { 
-          token: oldToken, 
+        const authData: AuthStorage = {
+          token: oldToken,
           user: {
             id: user.id,
             email: user.email,
             rol: user.rol
-          } 
+          }
         };
         localStorage.setItem('autogestion.auth', JSON.stringify(authData));
-        // Limpiar el formato antiguo
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         return oldToken;
@@ -63,14 +63,42 @@ const getAuthToken = (): string | null => {
   return null;
 };
 
-// Interceptor para agregar el token de autenticación a las peticiones
+export const setAuthToken = (token: string | null) => {
+  if (token) {
+    const authToken = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+    api.defaults.headers.common['Authorization'] = authToken;
+  } else {
+    delete api.defaults.headers.common['Authorization'];
+  }
+};
+
+if (typeof window !== 'undefined') {
+  const token = getAuthToken();
+  if (token) {
+    setAuthToken(token);
+  }
+}
+
 api.interceptors.request.use(
-  (config: InternalAxiosRequestConfig): InternalAxiosRequestConfig => {
+  (config: InternalAxiosRequestConfig) => {
     if (typeof window !== 'undefined') {
       const token = getAuthToken();
       if (token) {
-        config.headers = config.headers || {};
-        config.headers.Authorization = `Bearer ${token}`;
+        if (config.headers) {
+          if (config.headers instanceof AxiosHeaders) {
+            if (!config.headers.has('Authorization')) {
+              config.headers.set('Authorization', `Bearer ${token}`);
+            }
+          } else {
+            const headers = (config.headers as unknown as Record<string, string>);
+            if (!headers.Authorization) {
+              headers.Authorization = `Bearer ${token}`;
+            }
+            config.headers = headers as unknown as AxiosHeaders;
+          }
+        } else {
+          config.headers = new AxiosHeaders({ Authorization: `Bearer ${token}` });
+        }
       }
     }
     return config;
@@ -80,24 +108,42 @@ api.interceptors.request.use(
   }
 );
 
-// Interceptor para manejar errores de autenticación
 api.interceptors.response.use(
   (response: AxiosResponse) => response,
   (error: AxiosError) => {
-    if (error.response) {
-      // Si recibimos un 401 (No autorizado) o 403 (Prohibido)
-      if (error.response.status === 401 || error.response.status === 403) {
-        console.warn('Sesión expirada o no autorizada, redirigiendo a login...');
-        
-        // Limpiar el almacenamiento de autenticación
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('autogestion.auth');
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          window.location.href = '/login';
+    if (!error.config) {
+      return Promise.reject(error);
+    }
+
+    const originalRequest = error.config;
+
+    if (error.response?.status === 404 && originalRequest.url?.includes('/auth/profile')) {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('auth_token');
+        delete api.defaults.headers.common['Authorization'];
+      }
+      return Promise.reject(new Error('Sesión no válida'));
+    }
+
+    if (error.response?.status === 401 && !originalRequest.url?.includes('/auth/login')) {
+      if (typeof window !== 'undefined') {
+        const currentPath = window.location.pathname;
+        const isAuthRoute = currentPath.includes('/login') || currentPath.includes('/auth');
+        const isInscripcionRoute = currentPath.includes('/inscripciones');
+        const isHorarioRoute = currentPath.includes('/mi-horario');
+
+        if (isInscripcionRoute || isHorarioRoute) {
+          return Promise.reject(error);
+        }
+
+        if (!isAuthRoute) {
+          localStorage.removeItem('auth_token');
+          delete api.defaults.headers.common['Authorization'];
+          window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
         }
       }
     }
+
     return Promise.reject(error);
   }
 );

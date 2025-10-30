@@ -1,14 +1,6 @@
-import axios, { AxiosRequestConfig } from 'axios';
-import { getApiUrl } from '@/lib/utils';
 
-const API_URL_EXAMENES = getApiUrl('examenes-finales');
-const API_URL_INSCRIPCION = getApiUrl('inscripcion-examen');
-
-const authHeaders = (): AxiosRequestConfig => ({
-  headers: {
-    Authorization: `Bearer ${localStorage.getItem('token') ?? ''}`,
-  },
-});
+import api from './api';
+import { AxiosRequestConfig } from 'axios';
 
 export interface HorarioExamen {
   horaInicio: string;
@@ -101,20 +93,18 @@ const mapInscripcion = (
 });
 
 export const ExamenFinalService = {
-  // Obtener todos los exámenes finales disponibles
   async getExamenesDisponibles(): Promise<ExamenFinal[]> {
-    const response = await axios.get<ExamenFinalResponse[]>(`${API_URL_EXAMENES}`, authHeaders());
+    const response = await api.get<ExamenFinalResponse[]>('/examenes-finales');
     return response.data.map(mapExamen);
   },
 
-  // Obtener un examen por su ID
   async getExamenById(id: number): Promise<ExamenFinal> {
-    const response = await axios.get<ExamenFinalResponse>(`${API_URL_EXAMENES}/${id}`, authHeaders());
+    const response = await api.get<ExamenFinalResponse>(`/examenes-finales/${id}`);
     return mapExamen(response.data);
   },
 
   async crearExamenFinal(payload: CreateExamenFinalPayload): Promise<ExamenFinal> {
-    const response = await axios.post<ExamenFinalResponse>(`${API_URL_EXAMENES}`, payload, authHeaders());
+    const response = await api.post<ExamenFinalResponse>('/examenes-finales', payload);
     return mapExamen(response.data);
   },
 
@@ -122,43 +112,35 @@ export const ExamenFinalService = {
     id: number,
     payload: UpdateExamenFinalPayload,
   ): Promise<ExamenFinal> {
-    const response = await axios.patch<ExamenFinalResponse>(
-      `${API_URL_EXAMENES}/${id}`,
+    const response = await api.patch<ExamenFinalResponse>(
+      `/examenes-finales/${id}`,
       payload,
-      authHeaders(),
     );
     return mapExamen(response.data);
   },
 
   async eliminarExamenFinal(id: number): Promise<void> {
-    await axios.delete(`${API_URL_EXAMENES}/${id}`, authHeaders());
+    await api.delete(`/examenes-finales/${id}`);
   },
 
-  // Inscribirse a un examen final
   async inscribirAExamen(
     examenFinalId: number,
   ): Promise<InscripcionExamenFinal> {
-    const response = await axios.post<InscripcionExamenFinalResponse>(
-      `${API_URL_INSCRIPCION}`,
+    const response = await api.post<InscripcionExamenFinalResponse>(
+      '/inscripcion-examen',
       { examenId: examenFinalId },
-      authHeaders()
     );
     return mapInscripcion(response.data);
   },
 
-  // Obtener las inscripciones de un estudiante
   async getInscripcionesEstudiante(estudianteId: number): Promise<InscripcionExamenFinal[]> {
-    const response = await axios.get<InscripcionExamenFinalResponse[]>(
-      `${API_URL_INSCRIPCION}/estudiante/${estudianteId}`,
-      authHeaders()
+    const response = await api.get<InscripcionExamenFinalResponse[]>(
+      `/inscripcion-examen/estudiante/${estudianteId}`,
     );
-    
-    // Transformar la respuesta al formato esperado por el frontend
     return response.data.map(mapInscripcion);
   },
 
-  // Cancelar inscripción a un examen final (por el estudiante)
   async cancelarInscripcion(inscripcionId: number): Promise<void> {
-    await axios.delete(`${API_URL_INSCRIPCION}/mine/${inscripcionId}`, authHeaders());
+    await api.delete(`/inscripcion-examen/mine/${inscripcionId}`);
   }
 };

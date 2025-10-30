@@ -6,8 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Calendar, Clock, MapPin, User, Download, ChevronLeft, ChevronRight } from 'lucide-react';
-import api from '@/lib/api';
-import { cn } from '@/lib/utils';
+import api from '@/services/api';
+import { cn } from '@/utils/utils';
 import { isAxiosError } from 'axios';
 import axios from 'axios';
 import { useAuth } from '@/contexts/AuthContext';
