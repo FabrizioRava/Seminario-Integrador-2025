@@ -120,3 +120,9 @@ export const obtenerEstadisticasAsistencia = async (materiaId?: number) => {
   const { data } = await api.get(url);
   return data;
 };
+
+// 🔹 Obtener estado de asistencia de una materia para el alumno
+export const obtenerEstadoAsistenciaMateria = async (materiaId: number) => {
+  const { data } = await api.get(`/asistencia/materia/${materiaId}`);
+  return data;
+}

@@ -1,27 +1,31 @@
-'use client'
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { User } from "@/types"
+import React from 'react';
+import { User } from '@/types';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 interface UserAvatarProps {
-  user: User
+  user: User;
 }
 
-export function UserAvatar({ user }: UserAvatarProps) {
+const UserAvatar: React.FC<UserAvatarProps> = ({ user }) => {
   const getInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-  }
+    return name.charAt(0).toUpperCase();
+  };
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger>
         <Avatar>
-          <AvatarImage src="" alt={`${user.nombre} ${user.apellido}`} />
-          <AvatarFallback>{getInitials(`${user.nombre} ${user.apellido}`)}</AvatarFallback>
+          {/* <AvatarImage src={user.imageUrl} /> */}
+          <AvatarFallback>{getInitials(user.nombre)}</AvatarFallback>
         </Avatar>
       </DropdownMenuTrigger>
       <DropdownMenuContent>
@@ -31,5 +35,7 @@ export function UserAvatar({ user }: UserAvatarProps) {
         <DropdownMenuItem>Logout</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
-  )
-}
+  );
+};
+
+export default UserAvatar;

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -15,7 +16,8 @@ import {
   Calendar,
   MapPin
 } from 'lucide-react';
-import api from '@/lib/api';
+import {api} from '@/services/api';
+import EstadoAsistencia from '@/components/materia/CardMateria';
 
 interface MateriaComision {
   id: number;
@@ -167,8 +169,8 @@ export default function MateriasPage() {
                     </Button>
                   </div>
                 </CardHeader>
-                {(materia.comisiones && materia.comisiones.length > 0) && (
-                  <CardContent>
+                <CardContent>
+                  {(materia.comisiones && materia.comisiones.length > 0) && (
                     <div className="space-y-4">
                       {materia.comisiones.map((comision) => (
                         <div key={comision.id} className="border rounded-lg p-4">
@@ -200,8 +202,9 @@ export default function MateriasPage() {
                         </div>
                       ))}
                     </div>
-                  </CardContent>
-                )}
+                  )}
+                  <EstadoAsistencia materiaId={materia.id} />
+                </CardContent>
               </Card>
             ))}
           </div>
