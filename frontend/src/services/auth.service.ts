@@ -1,3 +1,6 @@
+'use client';
+
+import Cookies from 'js-cookie';
 import api, { setAuthToken } from './api';
 
 export interface LoginDto {
@@ -30,22 +33,14 @@ export interface AuthResponse {
   user: User;
 }
 
-type AuthStorage = {
-    token: string;
-    user: User;
-  };
-
 class AuthService {
   async login(credentials: LoginDto): Promise<AuthResponse> {
     const response = await api.post<AuthResponse>('/auth/login', credentials);
     const { access_token, user } = response.data;
 
     if (access_token && user) {
-      const authData: AuthStorage = {
-        token: access_token,
-        user: user,
-      };
-      localStorage.setItem('autogestion.auth', JSON.stringify(authData));
+      const authData = { token: access_token, ...user };
+      Cookies.set('user', JSON.stringify(authData), { expires: 1, path: '/' });
       setAuthToken(access_token);
     }
     return response.data;
@@ -62,42 +57,24 @@ class AuthService {
   }
 
   logout() {
-    localStorage.removeItem('autogestion.auth');
-    localStorage.removeItem('token'); // for old versions
-    localStorage.removeItem('user'); // for old versions
+    Cookies.remove('user', { path: '/' });
     setAuthToken(null);
     if (typeof window !== 'undefined') {
-        window.location.href = '/login';
+      window.location.href = '/login';
     }
   }
 
   getStoredUser(): User | null {
-    if (typeof window === 'undefined') return null;
-    const authStr = localStorage.getItem('autogestion.auth');
-    if (authStr) {
+    const userCookie = Cookies.get('user');
+    if (userCookie) {
       try {
-        const authData: AuthStorage = JSON.parse(authStr);
-        return authData.user;
+        const userData = JSON.parse(userCookie);
+        return userData;
       } catch (e) {
         return null;
       }
     }
     return null;
-  }
-
-  isAuthenticated(): boolean {
-    if (typeof window === 'undefined') return false;
-    const authStr = localStorage.getItem('autogestion.auth');
-    if (authStr) {
-      try {
-        const authData: AuthStorage = JSON.parse(authStr);
-        return !!authData.token;
-      } catch (e) {
-        return false;
-      }
-    }
-    // Fallback for migration
-    return !!localStorage.getItem('token');
   }
 }
 
