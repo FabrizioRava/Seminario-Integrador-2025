@@ -9,8 +9,8 @@ services:
     ports:
       - "5434:5432"
     volumes:
-      - db_data:/var/lib/postgresql/data
-      - ./docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d
+      #- db_data:/var/lib/postgresql/data comentado porque no me anda en fedorita
+      - ./docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d:z
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -19,3 +19,4 @@ services:
 
 volumes:
   db_data:
+
